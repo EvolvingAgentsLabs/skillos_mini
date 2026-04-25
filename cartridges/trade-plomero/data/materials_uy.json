@@ -1,0 +1,24 @@
+{
+  "$comment": "Reference prices in UYU as of 2026-04. Marcas locales habituales en Uruguay. TODO: validate with plomero advisor (CLAUDE.md M1).",
+  "currency": "UYU",
+  "updated_at": "2026-04-25",
+  "materials": [
+    { "sku": "FLEX-50",     "brand": "FV",       "name": "Flexible 50cm 1/2\" inox",         "unit": "u",     "unit_price": 380,   "tags": ["flexible"] },
+    { "sku": "FLEX-30",     "brand": "FV",       "name": "Flexible 30cm 1/2\" inox",         "unit": "u",     "unit_price": 320,   "tags": ["flexible"] },
+    { "sku": "VAL-PASO12",  "brand": "FV",       "name": "Llave de paso 1/2\" cromada",     "unit": "u",     "unit_price": 950,   "tags": ["valvula"] },
+    { "sku": "VAL-PASO34",  "brand": "FV",       "name": "Llave de paso 3/4\" cromada",     "unit": "u",     "unit_price": 1180,  "tags": ["valvula"] },
+    { "sku": "JNT-WC",      "brand": "Loto",     "name": "Junta de inodoro universal",      "unit": "u",     "unit_price": 240,   "tags": ["junta", "inodoro"] },
+    { "sku": "JNT-CER",     "brand": "Loto",     "name": "Junta cera para inodoro",         "unit": "u",     "unit_price": 180,   "tags": ["junta", "inodoro"] },
+    { "sku": "PVC-40-3",    "brand": "Hidromet", "name": "Caño PVC 40mm desagüe x 3m",     "unit": "u",     "unit_price": 460,   "tags": ["pvc", "desague"], "diameter_mm": 40 },
+    { "sku": "PVC-50-3",    "brand": "Hidromet", "name": "Caño PVC 50mm desagüe x 3m",     "unit": "u",     "unit_price": 620,   "tags": ["pvc", "desague"], "diameter_mm": 50 },
+    { "sku": "PVC-110-3",   "brand": "Hidromet", "name": "Caño PVC 110mm desagüe x 3m",    "unit": "u",     "unit_price": 1450,  "tags": ["pvc", "desague"], "diameter_mm": 110 },
+    { "sku": "COD-PVC-40",  "brand": "Hidromet", "name": "Codo PVC 40mm 90°",                "unit": "u",     "unit_price": 90,    "tags": ["accesorio"], "diameter_mm": 40 },
+    { "sku": "COD-PVC-50",  "brand": "Hidromet", "name": "Codo PVC 50mm 90°",                "unit": "u",     "unit_price": 120,   "tags": ["accesorio"], "diameter_mm": 50 },
+    { "sku": "COD-PVC-110", "brand": "Hidromet", "name": "Codo PVC 110mm 90°",               "unit": "u",     "unit_price": 380,   "tags": ["accesorio"], "diameter_mm": 110 },
+    { "sku": "TQ-RT-1100",  "brand": "Rotoplas", "name": "Tanque tricapa 1100 lts",          "unit": "u",     "unit_price": 12500, "tags": ["tanque"] },
+    { "sku": "TQ-RT-600",   "brand": "Rotoplas", "name": "Tanque tricapa 600 lts",           "unit": "u",     "unit_price": 7800,  "tags": ["tanque"] },
+    { "sku": "BOMBA-1HP",   "brand": "Pedrollo", "name": "Bomba presurizadora 1 HP",          "unit": "u",     "unit_price": 18500, "tags": ["bomba"] },
+    { "sku": "TEFL-12",     "brand": "FV",       "name": "Cinta teflón 12mm x 10m",          "unit": "u",     "unit_price": 60,    "tags": ["sellador"] },
+    { "sku": "SIK-SAN",     "brand": "Sika",     "name": "Sikaflex sanitario blanco 300ml",  "unit": "u",     "unit_price": 480,   "tags": ["sellador"] }
+  ]
+}

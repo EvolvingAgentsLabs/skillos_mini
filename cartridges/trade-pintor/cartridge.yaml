@@ -1,0 +1,85 @@
+name: trade-pintor
+description: >
+  Cartridge para pintores residenciales en Uruguay. Dos flujos: presupuesto
+  rápido por m² (visita técnica) y documentación de trabajo con portfolio
+  automático antes/después. Validadores deterministas (no normativos):
+  rendimiento m²/L razonable, tiempo de secado entre manos, advertencia si
+  falta foto de preparación de superficie.
+
+category: trade
+tags:
+  - trade
+  - pintor
+  - residential
+  - portfolio
+  - on-device
+
+entry_intents:
+  - pintor
+  - pintura
+  - presupuestar pintura
+  - pintar pared
+  - documentar trabajo de pintura
+
+flows:
+  presupuesto:
+    - vision-diagnoser
+    - quote-builder
+  trabajo:
+    - vision-diagnoser
+    - quote-builder
+    - report-composer
+
+default_flow: presupuesto
+
+blackboard_schema:
+  photo_set:        photo_set.schema.json
+  diagnosis:        diagnosis.schema.json
+  work_plan:        work_plan.schema.json
+  quote:            quote.schema.json
+  execution_trace:  execution_trace.schema.json
+  client_report:    client_report.schema.json
+
+validators:
+  - painting_sanity.py
+
+max_turns_per_agent: 3
+preferred_tier: local
+
+variables:
+  currency: UYU
+  tax_rate: 0.22
+  region: Uruguay
+  dialect: rioplatense
+  default_iva_included: false
+  warranty_default: >
+    Garantía de 12 meses sobre la mano de obra y los acabados aplicados,
+    siempre que las condiciones de uso sean normales y no existan
+    intervenciones de terceros sobre las superficies pintadas. No cubre
+    fallas por humedad estructural preexistente no declarada.
+  professional_disclaimer: >
+    Este reporte refleja el trabajo realizado por el profesional declarado
+    en el pie de página. La aplicación asiste con documentación visual
+    antes/durante/después y cálculo de cobertura; las decisiones técnicas
+    sobre productos y procedimientos son responsabilidad del pintor actuante.
+
+ui:
+  brand_color: "#F59E0B"
+  accent_color: "#B45309"
+  emoji: "🎨"
+  primary_action:
+    label: "Presupuestar"
+    flow: presupuesto
+    icon: clipboard
+  secondary_actions:
+    - label: "Documentar trabajo"
+      flow: trabajo
+      icon: brush
+  library_default_mode: portfolio
+
+hooks:
+  on_quote_generated:
+    - send_to_blackboard: client_message
+  on_job_closed:
+    - generate_report: true
+    - prompt_corpus_consent: false

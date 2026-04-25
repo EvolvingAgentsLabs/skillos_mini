@@ -1,0 +1,11 @@
+{
+  "$comment": "Reference labor rates UYU/hour 2026-04. TODO: validate with plomero advisor.",
+  "currency": "UYU",
+  "updated_at": "2026-04-25",
+  "rates": [
+    { "kind": "estandar",          "description": "Plomero residencial — intervención estándar",      "hourly": 1100 },
+    { "kind": "ayudante",          "description": "Auxiliar / ayudante",                                "hourly": 700 },
+    { "kind": "diagnostico_solo",  "description": "Visita técnica diagnóstica sin intervención",       "hourly": 1400 },
+    { "kind": "urgencia",          "description": "Urgencia fuera de horario / fin de semana",         "hourly": 2000 }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "skillos://_shared/diagnosis.schema.json",
+  "title": "Diagnosis",
+  "description": "Trade-agnostic diagnosis emitted by vision-diagnoser from a photo_set. Trade-specific detail goes in problem_categories codes defined per cartridge.",
+  "type": "object",
+  "required": ["trade", "severity", "problem_categories", "confidence"],
+  "properties": {
+    "trade": {
+      "type": "string",
+      "enum": ["electricista", "plomero", "pintor"]
+    },
+    "severity": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "1=cosmetic, 5=immediate-danger. Trade-specific but bounded."
+    },
+    "problem_categories": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Trade-defined codes. e.g. electricista: 'undersized_cable', 'missing_rcd'."
+    },
+    "summary": {
+      "type": "string",
+      "description": "One-paragraph plain-language description for the trade."
+    },
+    "client_explanation": {
+      "type": "string",
+      "description": "Two-three sentences in client-friendly language. Distinct from summary — this is what ends up in the report PDF."
+    },
+    "visual_evidence_refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "URIs from the photo_set that ground the diagnosis."
+    },
+    "hazards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "description"],
+        "properties": {
+          "kind": { "type": "string" },
+          "description": { "type": "string" },
+          "requires_immediate_action": { "type": "boolean" }
+        }
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "skillos://_shared/work_plan.schema.json",
+  "title": "WorkPlan",
+  "description": "Trade-agnostic plan of action derived from a Diagnosis. Drives quote generation and execution checklist.",
+  "type": "object",
+  "required": ["steps", "estimated_hours"],
+  "properties": {
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "description"],
+        "properties": {
+          "id": { "type": "string" },
+          "description": { "type": "string" },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "estimated_minutes": { "type": "integer", "minimum": 1 },
+          "safety_preconditions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Free-form preconditions the validator can check, e.g. 'power_off_documented'."
+          }
+        }
+      }
+    },
+    "estimated_hours": {
+      "type": "number",
+      "minimum": 0
+    },
+    "materials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "qty", "unit"],
+        "properties": {
+          "sku": { "type": "string" },
+          "brand": { "type": "string" },
+          "name": { "type": "string" },
+          "qty": { "type": "number", "minimum": 0 },
+          "unit": { "type": "string" }
+        }
+      }
+    },
+    "safety_notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "requires_permit": {
+      "type": "boolean",
+      "description": "Job needs a municipal/UTE permit before execution."
+    },
+    "requires_matriculated_professional": {
+      "type": "boolean"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "skillos://_shared/client_message.schema.json",
+  "title": "ClientMessage",
+  "description": "Short message produced by client-message-writer for the trade to copy/paste into WhatsApp.",
+  "type": "object",
+  "required": ["text"],
+  "properties": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 800
+    },
+    "tone": {
+      "type": "string",
+      "enum": ["reassuring", "firm", "informative"]
+    },
+    "channel_hint": {
+      "type": "string",
+      "enum": ["whatsapp", "sms", "email"]
+    }
+  }
+}

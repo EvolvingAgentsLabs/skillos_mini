@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "skillos://_shared/photo_set.schema.json",
+  "title": "PhotoSet",
+  "description": "Ordered set of photo references captured during a job. Photos live as blobs in IndexedDB; this schema only carries refs and metadata.",
+  "type": "object",
+  "required": ["photos"],
+  "properties": {
+    "photos": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["uri", "taken_at", "role"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "Local URI into the app's blob store (e.g. idb://photos/<uuid>) or capacitor file URI."
+          },
+          "taken_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["before", "during", "after", "detail"],
+            "description": "Where in the job timeline this photo sits. Inferred by the flow position; user can override."
+          },
+          "geo": {
+            "type": "object",
+            "description": "Optional, opt-in only. May be omitted entirely.",
+            "properties": {
+              "lat": { "type": "number" },
+              "lon": { "type": "number" },
+              "accuracy_m": { "type": "number" }
+            }
+          },
+          "exif": {
+            "type": "object",
+            "description": "Subset of EXIF preserved (orientation, dimensions, camera). Stripped of GPS unless geo opt-in.",
+            "additionalProperties": true
+          },
+          "annotations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["kind", "text"],
+              "properties": {
+                "kind": { "type": "string", "enum": ["voice", "text", "diagnostic_overlay"] },
+                "text": { "type": "string" },
+                "voice_uri": { "type": "string" },
+                "created_at": { "type": "string", "format": "date-time" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

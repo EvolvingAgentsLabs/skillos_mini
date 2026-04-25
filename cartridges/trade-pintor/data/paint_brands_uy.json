@@ -1,0 +1,95 @@
+{
+  "$comment": "Reference paints UYU/4L lata as of 2026-04. coverage_m2_per_l por mano. drying_min_hours entre manos. TODO: validate with pintor advisor.",
+  "currency": "UYU",
+  "updated_at": "2026-04-25",
+  "products": [
+    {
+      "brand": "Sherwin Williams",
+      "sku": "PROMAR-4L",
+      "name": "Látex interior ProMar 4L",
+      "kind": "latex_interior",
+      "color_default": "blanco",
+      "unit": "lata",
+      "unit_size_l": 4,
+      "unit_price": 4200,
+      "coverage_m2_per_l": 12,
+      "drying_min_hours": 4
+    },
+    {
+      "brand": "Sherwin Williams",
+      "sku": "SUPERMATE-20L",
+      "name": "Látex interior SuperMate 20L",
+      "kind": "latex_interior",
+      "color_default": "blanco",
+      "unit": "balde",
+      "unit_size_l": 20,
+      "unit_price": 16800,
+      "coverage_m2_per_l": 12,
+      "drying_min_hours": 4
+    },
+    {
+      "brand": "Inca",
+      "sku": "LAVABLE-4L",
+      "name": "Látex lavable 4L",
+      "kind": "latex_interior",
+      "color_default": "blanco",
+      "unit": "lata",
+      "unit_size_l": 4,
+      "unit_price": 3600,
+      "coverage_m2_per_l": 11,
+      "drying_min_hours": 4
+    },
+    {
+      "brand": "Sinteplast",
+      "sku": "ANTIH-1L",
+      "name": "Sellador antihumedad 1L",
+      "kind": "antihumedad",
+      "unit": "lata",
+      "unit_size_l": 1,
+      "unit_price": 1800,
+      "coverage_m2_per_l": 8,
+      "drying_min_hours": 6
+    },
+    {
+      "brand": "Sinteplast",
+      "sku": "ESM-SINT-1L",
+      "name": "Esmalte sintético interior/exterior 1L",
+      "kind": "esmalte_sintetico",
+      "color_default": "blanco brillante",
+      "unit": "lata",
+      "unit_size_l": 1,
+      "unit_price": 1450,
+      "coverage_m2_per_l": 12,
+      "drying_min_hours": 8
+    },
+    {
+      "brand": "Kolor",
+      "sku": "FIJ-4L",
+      "name": "Fijador al agua 4L",
+      "kind": "fijador",
+      "unit": "lata",
+      "unit_size_l": 4,
+      "unit_price": 1900,
+      "coverage_m2_per_l": 10,
+      "drying_min_hours": 3
+    },
+    {
+      "brand": "Kolor",
+      "sku": "LATEX-EXT-4L",
+      "name": "Látex exterior 4L",
+      "kind": "latex_exterior",
+      "unit": "lata",
+      "unit_size_l": 4,
+      "unit_price": 4500,
+      "coverage_m2_per_l": 10,
+      "drying_min_hours": 5
+    }
+  ],
+  "auxiliaries": [
+    { "sku": "LIJA-180", "brand": "Genérico", "name": "Lija al agua grano 180", "unit": "u", "unit_price": 70 },
+    { "sku": "LIJA-220", "brand": "Genérico", "name": "Lija al agua grano 220", "unit": "u", "unit_price": 70 },
+    { "sku": "EMP-1KG",  "brand": "Sinteplast", "name": "Empaste para interior 1kg", "unit": "u", "unit_price": 380 },
+    { "sku": "MASK-50",  "brand": "Genérico", "name": "Cinta de pintor 50m", "unit": "u", "unit_price": 220 },
+    { "sku": "ROD-23",   "brand": "Genérico", "name": "Rodillo de lana 23cm", "unit": "u", "unit_price": 320 }
+  ]
+}

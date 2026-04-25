@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "skillos://_shared/quote.schema.json",
+  "title": "Quote",
+  "description": "Quote sent to the client. Currency is implicit-per-cartridge (UYU for trade-* in es-UY; override via cartridge variables).",
+  "type": "object",
+  "required": ["description", "line_items", "subtotal", "total", "valid_until"],
+  "properties": {
+    "description": { "type": "string" },
+    "line_items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "qty", "unit", "unit_price", "total"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["material", "labor", "fee", "discount"] },
+          "name": { "type": "string" },
+          "sku": { "type": "string" },
+          "brand": { "type": "string" },
+          "qty": { "type": "number", "minimum": 0 },
+          "unit": { "type": "string" },
+          "unit_price": { "type": "number", "minimum": 0 },
+          "total": { "type": "number" }
+        }
+      }
+    },
+    "labor_hours": { "type": "number", "minimum": 0 },
+    "labor_rate": { "type": "number", "minimum": 0 },
+    "subtotal": { "type": "number" },
+    "tax": { "type": "number" },
+    "tax_rate": { "type": "number", "description": "Decimal, e.g. 0.22 for 22% IVA." },
+    "total": { "type": "number" },
+    "currency": { "type": "string", "default": "UYU" },
+    "valid_until": { "type": "string", "format": "date" },
+    "warranty_terms": { "type": "string" },
+    "notes": { "type": "string" }
+  }
+}

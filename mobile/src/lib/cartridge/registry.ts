@@ -12,7 +12,11 @@ import { getFileText, listFiles } from "../storage/db";
 import { makeValidatorForCartridge, type SchemaFile } from "./validators";
 import type {
   AgentSpec,
+  CartridgeHookAction,
+  CartridgeHooks,
   CartridgeManifest,
+  CartridgeUI,
+  CartridgeUIAction,
   FlowDef,
   FlowStep,
   SchemaValidator,
@@ -216,6 +220,8 @@ export class CartridgeRegistry {
     const category = typeof data.category === "string" ? data.category : undefined;
     const tagsRaw = asStringArray(data.tags);
     const tags = tagsRaw.length > 0 ? tagsRaw : undefined;
+    const ui = parseCartridgeUI(data.ui);
+    const hooks = parseCartridgeHooks(data.hooks);
     const manifest: CartridgeManifest = {
       name: String(data.name ?? fallbackName),
       path: cartridgeDir,
@@ -233,6 +239,8 @@ export class CartridgeRegistry {
       preferred_tier,
       category,
       tags,
+      ui,
+      hooks,
     };
     if (!manifest.default_flow) {
       const firstFlow = Object.keys(manifest.flows)[0];
@@ -351,6 +359,71 @@ function normalizeFlowsRaw(value: unknown): Record<string, unknown> {
   }
   if (value && typeof value === "object") return value as Record<string, unknown>;
   return {};
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// `ui:` and `hooks:` block parsing — CLAUDE.md §4.1
+// ────────────────────────────────────────────────────────────────────────
+
+function parseCartridgeUIAction(value: unknown): CartridgeUIAction | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const obj = value as Record<string, unknown>;
+  const label = typeof obj.label === "string" ? obj.label : "";
+  const flow = typeof obj.flow === "string" ? obj.flow : "";
+  if (!label || !flow) return undefined;
+  const icon = typeof obj.icon === "string" ? obj.icon : undefined;
+  return { label, flow, icon };
+}
+
+function parseCartridgeUI(value: unknown): CartridgeUI | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const obj = value as Record<string, unknown>;
+  const ui: CartridgeUI = {};
+  if (typeof obj.brand_color === "string") ui.brand_color = obj.brand_color;
+  if (typeof obj.accent_color === "string") ui.accent_color = obj.accent_color;
+  if (typeof obj.emoji === "string") ui.emoji = obj.emoji;
+  const primary = parseCartridgeUIAction(obj.primary_action);
+  if (primary) ui.primary_action = primary;
+  if (Array.isArray(obj.secondary_actions)) {
+    const secondary: CartridgeUIAction[] = [];
+    for (const a of obj.secondary_actions) {
+      const parsed = parseCartridgeUIAction(a);
+      if (parsed) secondary.push(parsed);
+    }
+    if (secondary.length > 0) ui.secondary_actions = secondary;
+  }
+  if (obj.library_default_mode === "list" || obj.library_default_mode === "portfolio") {
+    ui.library_default_mode = obj.library_default_mode;
+  }
+  if (Object.keys(ui).length === 0) return undefined;
+  return ui;
+}
+
+function parseCartridgeHookActions(value: unknown): CartridgeHookAction[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out: CartridgeHookAction[] = [];
+  for (const item of value) {
+    if (typeof item === "string") {
+      out.push({ [item]: true });
+    } else if (item && typeof item === "object" && !Array.isArray(item)) {
+      out.push({ ...(item as Record<string, unknown>) });
+    }
+  }
+  return out.length > 0 ? out : undefined;
+}
+
+function parseCartridgeHooks(value: unknown): CartridgeHooks | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const obj = value as Record<string, unknown>;
+  const hooks: CartridgeHooks = {};
+  const onQuote = parseCartridgeHookActions(obj.on_quote_generated);
+  if (onQuote) hooks.on_quote_generated = onQuote;
+  const onClosed = parseCartridgeHookActions(obj.on_job_closed);
+  if (onClosed) hooks.on_job_closed = onClosed;
+  const onDiag = parseCartridgeHookActions(obj.on_diagnosis_completed);
+  if (onDiag) hooks.on_diagnosis_completed = onDiag;
+  if (Object.keys(hooks).length === 0) return undefined;
+  return hooks;
 }
 
 function resolveRelPath(base: string, rel: string): string {
