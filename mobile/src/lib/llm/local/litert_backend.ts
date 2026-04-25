@@ -17,16 +17,24 @@ import type {
   BackendLoadOptions,
   LocalLLMBackend,
 } from "./backend";
+import type { ChatMessage } from "../client";
+import type { ModelCatalogEntry } from "./model_catalog";
 
 interface LiteRTPluginShape {
   isAvailable(): Promise<{ available: boolean }>;
-  initModel(opts: { modelPath: string }): Promise<{ handle: string }>;
+  initModel(opts: {
+    modelPath: string;
+    enableVision?: boolean;
+    maxNumImages?: number;
+  }): Promise<{ handle: string; supportsVision?: boolean; contextWindow?: number }>;
   generate(opts: {
     handle: string;
     prompt: string;
     maxTokens?: number;
     temperature?: number;
     stop?: string[];
+    /** Base64 strings without `data:` prefix. */
+    images?: string[];
   }): Promise<void>;
   cancel(opts: { handle: string }): Promise<void>;
   unloadModel(opts: { handle: string }): Promise<void>;
@@ -43,6 +51,7 @@ export class LiteRTBackend implements LocalLLMBackend {
 
   private plugin: LiteRTPluginShape | null = null;
   private handle: string | null = null;
+  private supportsVision = false;
   private pluginReady: Promise<LiteRTPluginShape>;
 
   constructor() {
@@ -81,8 +90,18 @@ export class LiteRTBackend implements LocalLLMBackend {
         "LiteRT requires a native file path. Did scripts/export-model-to-cache.ts run?",
       );
     }
-    const result = await plugin.initModel({ modelPath: opts.nativePath });
+    // Gemma 4 E2B/E4B is multimodal; request the vision modality at load
+    // time when the model declares it. Other models stay text-only and
+    // skip the wiring overhead. We rely on the catalog entry's `vision`
+    // flag — see model_catalog.ts.
+    const enableVision = isVisionCapable(opts.entry);
+    const result = await plugin.initModel({
+      modelPath: opts.nativePath,
+      enableVision,
+      maxNumImages: enableVision ? 4 : undefined,
+    });
     this.handle = result.handle;
+    this.supportsVision = Boolean(result.supportsVision ?? enableVision);
   }
 
   async generate(opts: BackendGenerateOptions): Promise<BackendGenerateResult> {
@@ -91,6 +110,10 @@ export class LiteRTBackend implements LocalLLMBackend {
     const handle = this.handle;
     const { prompt, stop } = formatPrompt(opts.template, opts.messages);
     const combinedStop = [...stop, ...(opts.stop ?? [])];
+    // Pull image data URLs off the trailing user message and strip the
+    // `data:image/...;base64,` prefix — the plugin expects raw base64.
+    // Only forwarded when the loaded model actually supports vision.
+    const images = this.supportsVision ? extractImagePayloads(opts.messages) : [];
 
     let text = "";
     let finishReason = "stop";
@@ -140,6 +163,7 @@ export class LiteRTBackend implements LocalLLMBackend {
         maxTokens: opts.maxTokens,
         temperature: opts.temperature,
         stop: combinedStop,
+        ...(images.length > 0 ? { images } : {}),
       });
       await donePromise;
     } finally {
@@ -184,4 +208,64 @@ export async function isLiteRTSupported(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────────── */
+/*                          Vision helpers                              */
+/* ──────────────────────────────────────────────────────────────────── */
+
+/**
+ * True when the loaded model declares vision support. Catalog entries opt
+ * in via `vision: true`, plus a defensive heuristic on model id (Gemma 4
+ * E2B/E4B is multimodal).
+ *
+ * Exported for tests.
+ */
+export function isVisionCapable(entry: ModelCatalogEntry | undefined): boolean {
+  if (!entry) return false;
+  if (entry.vision === true) return true;
+  // Defensive heuristic: id-based detection for catalog entries authored
+  // before the `vision` flag landed. Gemma 4 E-series ships multimodal.
+  const id = (entry.id ?? "").toLowerCase();
+  return /^gemma-?4(?:-e[24]b)?/.test(id);
+}
+
+/**
+ * Pull base64 image payloads off the trailing user message. The cloud
+ * client uses data URLs (`data:image/jpeg;base64,...`); the LiteRT plugin
+ * wants the raw base64 only. We strip the prefix here and skip anything
+ * that doesn't look like an image data URL — http(s) remote URLs would
+ * require the plugin to fetch them, which we don't support today.
+ *
+ * Exported for tests.
+ */
+export function extractImagePayloads(messages: ChatMessage[]): string[] {
+  // Walk from the end so multi-turn convos with assistant rebuttals still
+  // hit the most-recent user message's images.
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== "user") continue;
+    if (!m.images || m.images.length === 0) return [];
+    const out: string[] = [];
+    for (const url of m.images) {
+      const b64 = stripDataUrlPrefix(url);
+      if (b64) out.push(b64);
+    }
+    return out;
+  }
+  return [];
+}
+
+function stripDataUrlPrefix(url: string): string | null {
+  if (typeof url !== "string" || url.length === 0) return null;
+  if (url.startsWith("data:")) {
+    const comma = url.indexOf(",");
+    return comma >= 0 ? url.slice(comma + 1) : null;
+  }
+  // Treat anything else as either a raw base64 already (caller's choice)
+  // or an unsupported remote URL we can't safely forward to the plugin.
+  // Reject http(s) URLs explicitly to keep the privacy invariant
+  // (CLAUDE.md §9.3) — the plugin would otherwise fetch them.
+  if (url.startsWith("http://") || url.startsWith("https://")) return null;
+  return url;
 }

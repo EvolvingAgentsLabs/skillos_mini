@@ -11,6 +11,18 @@ import type { PluginListenerHandle } from "@capacitor/core";
 export interface InitModelOptions {
   /** Absolute path to a `.litertlm` file on the device. */
   modelPath: string;
+  /**
+   * Enable the vision modality on session creation so subsequent
+   * generate() calls can include images. Required for Gemma 4 E2B/E4B
+   * (multimodal). Default false for text-only models — skipping the
+   * vision wiring saves KV-cache and init time.
+   */
+  enableVision?: boolean;
+  /**
+   * Maximum number of images the plugin will accept per generate() call.
+   * Defaults to 4. Higher values trade KV-cache memory for capability.
+   */
+  maxNumImages?: number;
 }
 
 export interface InitModelResult {
@@ -18,6 +30,8 @@ export interface InitModelResult {
   handle: string;
   /** Device-side context window size, if the model reports one. */
   contextWindow?: number;
+  /** True when the loaded model supports image inputs. */
+  supportsVision?: boolean;
 }
 
 export interface GenerateOptions {
@@ -27,6 +41,16 @@ export interface GenerateOptions {
   temperature?: number;
   /** Stop strings — the plugin applies them via LiteRT's sampler config. */
   stop?: string[];
+  /**
+   * Optional image inputs (Gemma 4 vision). Each entry is a base64-encoded
+   * image WITHOUT the `data:image/...;base64,` prefix. The plugin decodes
+   * them natively to Bitmaps and adds them to the session before
+   * generation.
+   *
+   * Ignored when the model was loaded with `enableVision !== true` or
+   * when the model does not support vision.
+   */
+  images?: string[];
 }
 
 export interface TokenEvent {

@@ -52,8 +52,17 @@ dependencies {
   implementation project(':capacitor-android')
 
   // LiteRT-LM — Google's on-device LLM runtime. Apache-2.0.
-  // Pin the exact version to avoid API churn across patch releases.
-  implementation 'com.google.ai.edge.litertlm:litertlm:0.1.0'
+  // 0.2.0 introduced LlmInferenceSession with vision modality support
+  // for Gemma 4 E2B/E4B. Pin the exact version to avoid API churn.
+  implementation 'com.google.ai.edge.litertlm:litertlm:0.2.0'
+
+  // MediaPipe Tasks Vision — used for the MPImage / BitmapImageBuilder
+  // bridge between Android Bitmap and the LiteRT vision modality.
+  implementation 'com.google.mediapipe:tasks-vision:0.10.16'
+
+  // Coroutines runtime — pinned explicitly so kotlinx imports compile
+  // under older Capacitor versions where it isn't transitive.
+  implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0'
 
   testImplementation "junit:junit:$junitVersion"
   androidTestImplementation "androidx.test.ext:junit:$androidxTestJUnitVersion"

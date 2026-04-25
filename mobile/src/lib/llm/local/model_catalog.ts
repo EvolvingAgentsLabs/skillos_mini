@@ -40,6 +40,12 @@ export interface ModelCatalogEntry {
   tier: "cheap" | "capable";
   /** License string for the About / catalog UI. */
   license: string;
+  /**
+   * True for multimodal builds (e.g. Gemma 4 E2B/E4B). The LiteRT plugin
+   * enables the vision modality on session creation when this is set so
+   * generate() calls can include image inputs.
+   */
+  vision?: boolean;
 }
 
 /**
@@ -83,6 +89,35 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     contextTokens: 8_192,
     tier: "cheap",
     license: "Gemma Terms of Use",
+  },
+  {
+    // Gemma 4 E2B is multimodal — text + vision + audio. The .litertlm
+    // build is what unlocks the trade-app's "auto-diagnóstico" path on
+    // device, with no cloud round-trip and ~31 dec tok/s on Snapdragon NPU.
+    id: "gemma-4-e2b-it-litertlm",
+    name: "Gemma 4 · E2B · LiteRT (vision)",
+    description: "Multimodal Gemma 4 E2B. Vision + text. ~1.5 GB. Android NPU when available.",
+    url: "https://huggingface.co/litert-community/gemma-4-e2b-it/resolve/main/gemma-4-e2b-it.litertlm",
+    backend: "litert",
+    sizeBytes: 1_550_000_000,
+    template: "gemma-v3",
+    contextTokens: 128_000,
+    tier: "capable",
+    license: "Gemma Terms of Use",
+    vision: true,
+  },
+  {
+    id: "gemma-4-e4b-it-litertlm",
+    name: "Gemma 4 · E4B · LiteRT (vision)",
+    description: "Higher-quality Gemma 4 E4B build. Vision + text. ~2.6 GB. High-end devices.",
+    url: "https://huggingface.co/litert-community/gemma-4-e4b-it/resolve/main/gemma-4-e4b-it.litertlm",
+    backend: "litert",
+    sizeBytes: 2_650_000_000,
+    template: "gemma-v3",
+    contextTokens: 128_000,
+    tier: "capable",
+    license: "Gemma Terms of Use",
+    vision: true,
   },
 ];
 
