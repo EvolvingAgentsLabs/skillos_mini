@@ -14,6 +14,16 @@ import { defaultIsRetriable, withRetry } from "./retry";
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
+  /**
+   * Optional image data URLs (or remote URLs) attached to this message.
+   * When the cloud provider supports vision (Gemini, GPT-4V, Claude),
+   * `buildBody` rewrites the message into the OpenAI-compatible
+   * `content: [{type:"text",...},{type:"image_url",...}]` shape.
+   *
+   * Local backends ignore this field. Callers should check provider
+   * capability before populating images — see `lib/llm/vision_diagnose.ts`.
+   */
+  images?: string[];
 }
 
 export interface TokenUsage {
@@ -76,7 +86,7 @@ export class LLMClient implements LLMProvider {
   private buildBody(messages: ChatMessage[], opts: ChatOptions, stream: boolean): string {
     const body: Record<string, unknown> = {
       model: opts.model ?? this.provider.model,
-      messages,
+      messages: messages.map(serializeMessage),
       stream,
     };
     if (opts.temperature !== undefined) body.temperature = opts.temperature;
@@ -195,4 +205,30 @@ export class LLMClient implements LLMProvider {
     }
     return { content, usage, finishReason };
   }
+}
+
+/**
+ * Serialize a ChatMessage for the OpenAI-compatible /chat/completions API.
+ *
+ * - Plain text messages (no `images`) round-trip unchanged.
+ * - Messages with `images` get rewritten to the multimodal content-array
+ *   shape used by Gemini OpenAI-compat, OpenRouter GPT-4V, and the OpenAI
+ *   Vision API: `content: [{type:"text",...},{type:"image_url",...}]`.
+ *   Each image URL is wrapped as `{type:"image_url", image_url: {url}}`.
+ *
+ * This is exported for unit testing only — production callers go through
+ * `LLMClient.chat`.
+ */
+export function serializeMessage(m: ChatMessage): unknown {
+  if (!m.images || m.images.length === 0) {
+    return { role: m.role, content: m.content };
+  }
+  const parts: unknown[] = [];
+  if (m.content) {
+    parts.push({ type: "text", text: m.content });
+  }
+  for (const url of m.images) {
+    parts.push({ type: "image_url", image_url: { url } });
+  }
+  return { role: m.role, content: parts };
 }
