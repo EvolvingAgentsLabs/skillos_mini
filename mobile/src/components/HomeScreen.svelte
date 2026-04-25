@@ -16,17 +16,27 @@
    */
   import { onMount } from "svelte";
   import { CartridgeRegistry } from "$lib/cartridge/registry";
-  import type { CartridgeManifest } from "$lib/cartridge/types";
+  import type { CartridgeManifest, CartridgeUIAction } from "$lib/cartridge/types";
   import { loadProviderConfig } from "$lib/state/provider_config";
   import {
     createProject,
     loadProjects,
     projects,
   } from "$lib/state/projects.svelte";
+  import {
+    activeCartridge,
+    loadActiveCartridge,
+    setActiveCartridge,
+  } from "$lib/state/active_cartridge.svelte";
   import { countActiveTeachingsAll } from "$lib/memory/teachings";
   import { runProject } from "$lib/state/run_project";
   import GoalComposer from "$components/GoalComposer.svelte";
   import ProviderSettingsSheet from "$components/ProviderSettingsSheet.svelte";
+  import JobsList from "$components/JobsList.svelte";
+  import SettingsSheet from "$components/SettingsSheet.svelte";
+  import TradeBanner from "$components/TradeBanner.svelte";
+  import TradeChip from "$components/TradeChip.svelte";
+  import TradeFlowSheet from "$components/TradeFlowSheet.svelte";
 
   interface Props {
     onopenproject: (projectId: string) => void;
@@ -46,14 +56,74 @@
     teachings = await countActiveTeachingsAll();
   }
 
+  const active = activeCartridge();
+  let flowSheetOpen = $state(false);
+  let flowSheetAction = $state<CartridgeUIAction | null>(null);
+  let flowSheetProjectId = $state<string | null>(null);
+  let flowSheetResumeId = $state<string | null>(null);
+  let jobsRefreshToken = $state(0);
+  let settingsOpen = $state(false);
+
   onMount(async () => {
     const reg = new CartridgeRegistry();
     await reg.init();
     registry = reg;
     cartridges = reg.list();
-    await Promise.all([loadProjects(), refreshTeachings()]);
+    await Promise.all([loadProjects(), refreshTeachings(), loadActiveCartridge()]);
     loaded = true;
   });
+
+  async function runFlowFromBanner(action: CartridgeUIAction): Promise<void> {
+    if (!active.manifest) return;
+    // Trade cartridges launch the multi-step trade flow sheet (capture →
+    // diagnosis → report → share) — the on-device, no-LLM-required path
+    // that exercises the full PhotoCapture / pdfmake / ShareProvider loop.
+    // The legacy LLM run path remains available for non-trade cartridges
+    // and for trade cartridges once §7.3 vision pipeline lands.
+    const m = active.manifest;
+    const existing = projects.items.find((p) => p.cartridge === m.name);
+    const projectId = existing
+      ? existing.id
+      : (await createProject({
+          name: m.name,
+          cartridge: m.name,
+          initialGoal: m.description || `Run ${m.name}`,
+        })).id;
+    flowSheetProjectId = projectId;
+    flowSheetAction = action;
+    flowSheetResumeId = null;
+    flowSheetOpen = true;
+  }
+
+  async function resumeJob(jobId: string): Promise<void> {
+    if (!active.manifest) return;
+    const m = active.manifest;
+    const existing = projects.items.find((p) => p.cartridge === m.name);
+    const projectId = existing
+      ? existing.id
+      : (await createProject({
+          name: m.name,
+          cartridge: m.name,
+          initialGoal: m.description || `Run ${m.name}`,
+        })).id;
+    flowSheetProjectId = projectId;
+    flowSheetAction = null;
+    flowSheetResumeId = jobId;
+    flowSheetOpen = true;
+  }
+
+  function closeFlowSheet(): void {
+    flowSheetOpen = false;
+    flowSheetAction = null;
+    flowSheetProjectId = null;
+    flowSheetResumeId = null;
+    // Bump the token so JobsList re-fetches whatever changed during the run.
+    jobsRefreshToken += 1;
+  }
+
+  async function clearActiveCartridge(): Promise<void> {
+    await setActiveCartridge(null);
+  }
 
   // Group cartridges by category so Home has visible structure. Cartridges
   // without a category fall into "Other" — still visible, never hidden.
@@ -85,6 +155,13 @@
   });
 
   async function activateRecipe(m: CartridgeManifest) {
+    // Trade-style cartridges (those declaring a `ui:` block per CLAUDE.md
+    // §4.1) become the active shell cartridge — the trade chip + banner
+    // pin to them. Plain cartridges leave the active state untouched.
+    if (m.ui) {
+      await setActiveCartridge(m.name);
+    }
+
     // Reuse an existing project for this cartridge if there is one, so the
     // user doesn't accumulate duplicate projects per recipe. First-run for
     // the cartridge creates a new one.
@@ -145,9 +222,36 @@
 
 <section class="home">
   <header class="top">
-    <h1>Home</h1>
+    <div class="top-row">
+      <h1>Home</h1>
+      <div class="top-actions">
+        <TradeChip manifest={active.manifest} onclick={clearActiveCartridge} />
+        <button
+          type="button"
+          class="settings-btn"
+          aria-label="Ajustes"
+          onclick={() => (settingsOpen = true)}
+        >
+          ⚙
+        </button>
+      </div>
+    </div>
     <div class="sub">Your pinned Recipes. Tap to run.</div>
   </header>
+
+  <TradeBanner
+    manifest={active.manifest}
+    onaction={runFlowFromBanner}
+    onswitch={clearActiveCartridge}
+  />
+
+  {#if active.manifest && active.manifest.ui}
+    <JobsList
+      manifest={active.manifest}
+      refresh_token={jobsRefreshToken}
+      onresume={resumeJob}
+    />
+  {/if}
 
   {#if !loaded}
     <div class="empty">Loading…</div>
@@ -225,6 +329,21 @@
       }}
     />
   {/if}
+
+  {#if flowSheetOpen && active.manifest && flowSheetProjectId}
+    <TradeFlowSheet
+      open={flowSheetOpen}
+      manifest={active.manifest}
+      project_id={flowSheetProjectId}
+      action={flowSheetAction}
+      resume_job_id={flowSheetResumeId}
+      onclose={closeFlowSheet}
+    />
+  {/if}
+
+  {#if settingsOpen}
+    <SettingsSheet oncancel={() => (settingsOpen = false)} />
+  {/if}
 </section>
 
 <style>
@@ -239,6 +358,33 @@
     padding: 0.7rem 1rem 0.5rem;
     border-bottom: 1px solid var(--border);
     background: var(--bg-2);
+  }
+  .top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .settings-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--fg-dim);
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    font-size: 14px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+  }
+  .settings-btn:hover {
+    color: var(--fg);
+    border-color: var(--accent);
   }
   h1 {
     margin: 0;

@@ -3,8 +3,20 @@
   import { seedIfNeeded } from "$lib/storage/seed";
   import { fileCount, getMeta, listFiles, setMeta } from "$lib/storage/db";
   import { listExperiences } from "$lib/memory/smart_memory";
+  import {
+    activeCartridge,
+    loadActiveCartridge,
+    setActiveCartridge,
+  } from "$lib/state/active_cartridge.svelte";
+  import {
+    loadProfessionalProfile,
+    professionalProfile,
+  } from "$lib/state/professional_profile.svelte";
+  import { CartridgeRegistry } from "$lib/cartridge/registry";
+  import type { CartridgeManifest } from "$lib/cartridge/types";
   import EvalsScreen from "$components/EvalsScreen.svelte";
   import ModelManagerSheet from "$components/ModelManagerSheet.svelte";
+  import ProfessionalProfileSheet from "$components/ProfessionalProfileSheet.svelte";
   import { onMount } from "svelte";
 
   interface Props {
@@ -14,6 +26,7 @@
   let { oncancel }: Props = $props();
   let evalsOpen = $state(false);
   let modelsOpen = $state(false);
+  let profileOpen = $state(false);
   let onDeviceFlag = $state(false);
   let authoringFlag = $state(false);
 
@@ -25,6 +38,11 @@
   let busy = $state(false);
   const native = isFileSyncAvailable();
 
+  // Trade-shell sections.
+  const active = activeCartridge();
+  const profileStore = professionalProfile();
+  let tradeCartridges = $state<CartridgeManifest[]>([]);
+
   onMount(async () => {
     fileTotal = await fileCount();
     const cartridgePaths = await listFiles("cartridges/");
@@ -34,7 +52,33 @@
     experienceCount = (await listExperiences()).length;
     onDeviceFlag = Boolean(await getMeta("experimental_on_device_llm"));
     authoringFlag = Boolean(await getMeta("authoring_mode"));
+
+    // Trade-shell hydration — non-blocking; the dev sections render either way.
+    await Promise.all([loadActiveCartridge(), loadProfessionalProfile()]);
+    const reg = new CartridgeRegistry();
+    await reg.init();
+    // A "trade" cartridge is one that declares a `ui:` block (CLAUDE.md §4.1).
+    tradeCartridges = reg.list().filter((m) => Boolean(m.ui));
   });
+
+  async function pickCartridge(name: string | null): Promise<void> {
+    await setActiveCartridge(name);
+  }
+
+  function profileSummary(): string {
+    const p = profileStore.profile;
+    if (!p) return "Sin completar";
+    const ident = p.business_name || p.name;
+    if (!ident) return "Sin completar";
+    const parts: string[] = [ident];
+    if (p.matriculated && p.matriculation_id) parts.push(`Mat. ${p.matriculation_id}`);
+    if (p.phone) parts.push(p.phone);
+    return parts.join(" · ");
+  }
+
+  function prettyTradeName(name: string): string {
+    return name.replace(/^trade-/, "").replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
+  }
 
   async function toggleOnDevice(e: Event) {
     const v = (e.currentTarget as HTMLInputElement).checked;
@@ -93,6 +137,49 @@
   <div class="handle"></div>
   <h2>Settings</h2>
 
+  {#if tradeCartridges.length > 0}
+    <h3 class="section-title">Tu perfil</h3>
+    <div class="trade-card">
+      <div class="trade-row">
+        <div>
+          <div class="trade-line">{profileSummary()}</div>
+          <div class="hint">Aparece en el pie del PDF que mandás al cliente.</div>
+        </div>
+        <button onclick={() => (profileOpen = true)}>Editar</button>
+      </div>
+    </div>
+
+    <h3 class="section-title">Oficio activo</h3>
+    <div class="trade-card">
+      <ul class="trade-list">
+        <li>
+          <button
+            class="trade-pick"
+            class:active={active.name === null}
+            onclick={() => pickCartridge(null)}
+          >
+            <span class="trade-emoji">📋</span>
+            <span class="trade-name">Sin oficio (modo recetas)</span>
+          </button>
+        </li>
+        {#each tradeCartridges as m (m.name)}
+          <li>
+            <button
+              class="trade-pick"
+              class:active={active.name === m.name}
+              style:--brand={m.ui?.brand_color ?? "#374151"}
+              onclick={() => pickCartridge(m.name)}
+            >
+              <span class="trade-emoji">{m.ui?.emoji ?? "🧩"}</span>
+              <span class="trade-name">{prettyTradeName(m.name)}</span>
+            </button>
+          </li>
+        {/each}
+      </ul>
+    </div>
+  {/if}
+
+  <h3 class="section-title">Stats</h3>
   <div class="stats">
     <div><strong>{fileTotal}</strong> files seeded</div>
     <div><strong>{cartridgeCount}</strong> cartridges</div>
@@ -174,6 +261,14 @@
 
 {#if modelsOpen}
   <ModelManagerSheet oncancel={() => (modelsOpen = false)} />
+{/if}
+
+{#if profileOpen}
+  <ProfessionalProfileSheet
+    open={profileOpen}
+    require_complete={false}
+    onclose={() => (profileOpen = false)}
+  />
 {/if}
 
 <style>
@@ -293,5 +388,66 @@
   .toggle-label {
     font-size: 0.9rem;
     color: var(--fg);
+  }
+
+  /* Trade-shell sections */
+  .trade-card {
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.85rem;
+  }
+  .trade-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+  .trade-row > div {
+    min-width: 0;
+    flex: 1;
+  }
+  .trade-line {
+    color: var(--fg);
+    word-break: break-word;
+  }
+  .trade-row button {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+  }
+  .trade-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .trade-pick {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0.65rem;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.88rem;
+    cursor: pointer;
+    text-align: left;
+  }
+  .trade-pick.active {
+    border-color: var(--brand, var(--accent));
+    background: color-mix(in srgb, var(--brand, var(--accent)) 12%, var(--bg-2));
+  }
+  .trade-emoji {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .trade-name {
+    flex: 1;
   }
 </style>
