@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" role="img" aria-label="skillos_mini — on-device trade OS">
+  <defs>
+    <radialGradient id="bgRadial" cx="50%" cy="55%" r="60%">
+      <stop offset="0%" stop-color="#1a0500"/>
+      <stop offset="55%" stop-color="#0a0408"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </radialGradient>
+    <linearGradient id="titleFill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffd9c2"/>
+      <stop offset="50%" stop-color="#ff7a3d"/>
+      <stop offset="100%" stop-color="#ff2d00"/>
+    </linearGradient>
+    <linearGradient id="cyanFill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#bff7ff"/>
+      <stop offset="100%" stop-color="#00d4ff"/>
+    </linearGradient>
+    <filter id="aresGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="g1"/>
+      <feGaussianBlur stdDeviation="14" result="g2"/>
+      <feMerge>
+        <feMergeNode in="g2"/>
+        <feMergeNode in="g1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cyanGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="g1"/>
+      <feMerge>
+        <feMergeNode in="g1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="scanlines" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="4" fill="transparent"/>
+      <rect width="4" height="1" fill="#ff2d00" opacity="0.04"/>
+    </pattern>
+  </defs>
+
+  <!-- background -->
+  <rect width="1280" height="320" fill="url(#bgRadial)"/>
+
+  <!-- perspective grid: horizontal lines receding -->
+  <g stroke="#ff2d00" stroke-width="1" opacity="0.18" fill="none">
+    <line x1="0" y1="240" x2="1280" y2="240"/>
+    <line x1="60" y1="260" x2="1220" y2="260" opacity="0.22"/>
+    <line x1="100" y1="280" x2="1180" y2="280" opacity="0.28"/>
+    <line x1="140" y1="300" x2="1140" y2="300" opacity="0.34"/>
+    <line x1="180" y1="318" x2="1100" y2="318" opacity="0.4"/>
+  </g>
+
+  <!-- perspective grid: vanishing-point spokes -->
+  <g stroke="#ff2d00" stroke-width="1" opacity="0.14" fill="none">
+    <line x1="640" y1="220" x2="0" y2="320"/>
+    <line x1="640" y1="220" x2="160" y2="320"/>
+    <line x1="640" y1="220" x2="320" y2="320"/>
+    <line x1="640" y1="220" x2="480" y2="320"/>
+    <line x1="640" y1="220" x2="640" y2="320"/>
+    <line x1="640" y1="220" x2="800" y2="320"/>
+    <line x1="640" y1="220" x2="960" y2="320"/>
+    <line x1="640" y1="220" x2="1120" y2="320"/>
+    <line x1="640" y1="220" x2="1280" y2="320"/>
+  </g>
+
+  <!-- horizon glow under the grid -->
+  <ellipse cx="640" cy="232" rx="520" ry="6" fill="#ff2d00" opacity="0.55" filter="url(#aresGlow)">
+    <animate attributeName="opacity" values="0.45;0.7;0.45" dur="3.2s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- corner brackets -->
+  <g stroke="#ff6b1a" stroke-width="2" fill="none" filter="url(#aresGlow)">
+    <polyline points="24,32 24,24 88,24"/>
+    <polyline points="1256,32 1256,24 1192,24"/>
+    <polyline points="24,288 24,296 88,296"/>
+    <polyline points="1256,288 1256,296 1192,296"/>
+  </g>
+
+  <!-- vertical Ares accent rule, left -->
+  <line x1="120" y1="64" x2="120" y2="200" stroke="#ff2d00" stroke-width="2" filter="url(#aresGlow)"/>
+  <line x1="1160" y1="64" x2="1160" y2="200" stroke="#ff2d00" stroke-width="2" filter="url(#aresGlow)"/>
+
+  <!-- title -->
+  <g filter="url(#aresGlow)" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace" font-weight="900">
+    <text x="640" y="148" text-anchor="middle" font-size="78" letter-spacing="14" fill="url(#titleFill)" stroke="#ff2d00" stroke-width="0.5">SKILLOS_MINI</text>
+  </g>
+
+  <!-- subtle title pulse (apply to a copy underneath via animate) -->
+  <text x="640" y="148" text-anchor="middle" font-size="78" letter-spacing="14"
+        font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace" font-weight="900"
+        fill="#ff2d00" opacity="0.0" filter="url(#aresGlow)">
+    SKILLOS_MINI
+    <animate attributeName="opacity" values="0;0.35;0" dur="4.6s" repeatCount="indefinite"/>
+  </text>
+
+  <!-- subtitle -->
+  <text x="640" y="188" text-anchor="middle" font-size="14" letter-spacing="9"
+        font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace"
+        fill="#bff7ff" filter="url(#cyanGlow)">
+    ON·DEVICE  TRADE  OS   ·   GEMMA 4 VISION   ·   NO BACKEND
+  </text>
+
+  <!-- tag rule -->
+  <line x1="380" y1="208" x2="900" y2="208" stroke="#00d4ff" stroke-width="1" opacity="0.6" filter="url(#cyanGlow)">
+    <animate attributeName="opacity" values="0.3;0.85;0.3" dur="2.8s" repeatCount="indefinite"/>
+  </line>
+
+  <!-- scanline overlay -->
+  <rect width="1280" height="320" fill="url(#scanlines)"/>
+
+  <!-- moving horizontal scan -->
+  <rect x="0" y="0" width="1280" height="2" fill="#00d4ff" opacity="0.55" filter="url(#cyanGlow)">
+    <animate attributeName="y" values="-4;320;-4" dur="6s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;0.6;0.6;0" keyTimes="0;0.1;0.9;1" dur="6s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- traveling Ares packet on horizon -->
+  <circle r="3" fill="#ffe4b5" filter="url(#aresGlow)">
+    <animateMotion dur="3.4s" repeatCount="indefinite" path="M 80 232 L 1200 232"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.95;1" dur="3.4s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- top status bar -->
+  <text x="40" y="60" font-size="10" font-family="ui-monospace, 'SF Mono', Menlo, monospace"
+        fill="#ff6b1a" letter-spacing="2" filter="url(#aresGlow)">SYS//ARES.RUNTIME</text>
+  <text x="1240" y="60" text-anchor="end" font-size="10" font-family="ui-monospace, 'SF Mono', Menlo, monospace"
+        fill="#00d4ff" letter-spacing="2" filter="url(#cyanGlow)">v0.1.0  ·  M2</text>
+
+  <!-- bottom status -->
+  <text x="40" y="280" font-size="9" font-family="ui-monospace, 'SF Mono', Menlo, monospace"
+        fill="#ff6b1a" letter-spacing="2" opacity="0.7">[ ELECTRICISTA ]   [ PLOMERO ]   [ PINTOR ]</text>
+  <text x="1240" y="280" text-anchor="end" font-size="9" font-family="ui-monospace, 'SF Mono', Menlo, monospace"
+        fill="#00d4ff" letter-spacing="2" opacity="0.7">278 / 278 OK</text>
+</svg>

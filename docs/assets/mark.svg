@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="skillos_mini mark">
+  <defs>
+    <linearGradient id="markGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff6b1a"/>
+      <stop offset="100%" stop-color="#ff2d00"/>
+    </linearGradient>
+    <filter id="mGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2" result="g"/>
+      <feMerge>
+        <feMergeNode in="g"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="96" height="96" fill="#000"/>
+  <!-- hex frame -->
+  <polygon points="48,8 84,28 84,68 48,88 12,68 12,28"
+           fill="none" stroke="url(#markGrad)" stroke-width="2" filter="url(#mGlow)"/>
+  <!-- inner triangle (Ares mark) -->
+  <polygon points="48,30 70,66 26,66" fill="url(#markGrad)" filter="url(#mGlow)" opacity="0.95">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="2.4s" repeatCount="indefinite"/>
+  </polygon>
+  <!-- cyan eye -->
+  <circle cx="48" cy="56" r="3" fill="#bff7ff" filter="url(#mGlow)"/>
+</svg>

@@ -1,4 +1,14 @@
-# Tutorial · Build your own trade cartridge
+<p align="center">
+  <img src="assets/banner-tutorial.svg" alt="TUTORIAL — author your first cartridge · 30 min" width="100%"/>
+</p>
+
+<p align="center">
+  <strong>Tutorial</strong> &nbsp;//&nbsp; build your own trade cartridge &nbsp;//&nbsp; <code>trade-gasista</code>
+</p>
+
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
 
 > 30-minute walkthrough. By the end you'll have a working `trade-gasista`
 > cartridge running in skillos_mini, complete with vision diagnosis,
@@ -13,7 +23,7 @@ deliver a PDF" loop.
 
 ---
 
-## 0. Prerequisites
+## ▸ §0 prerequisites
 
 ```bash
 # You should already have skillos_mini running locally.
@@ -29,7 +39,11 @@ defines the rules this tutorial respects.
 
 ---
 
-## 1. Create the directory structure
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §1 create the directory structure
 
 Cartridges live under `cartridges/<name>/`. The runtime indexes them by
 listing every `cartridges/<name>/cartridge.yaml` file at boot.
@@ -63,7 +77,11 @@ cartridges/trade-gasista/
 
 ---
 
-## 2. Write the manifest (`cartridge.yaml`)
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §2 write the manifest · `cartridge.yaml`
 
 This is the central declaration. It tells the runtime what flows exist,
 what the blackboard schema is, what validators run, and how the shell
@@ -163,7 +181,11 @@ hooks:
 
 ---
 
-## 3. Copy the shared schemas
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §3 copy the shared schemas
 
 Until the runtime supports cross-cartridge schema refs, each cartridge
 ships its own copy. We copy from `_shared/schemas/`:
@@ -179,7 +201,11 @@ be added later if your flow produces something exotic (most don't).
 
 ---
 
-## 4. Write the agent prompts
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §4 write the agent prompts
 
 Three agents drive the flow: vision-diagnoser, quote-builder,
 report-composer.
@@ -268,7 +294,11 @@ For `quote-builder.md`, key trade-specific gates to mention:
 
 ---
 
-## 5. Write the deterministic validator
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §5 write the deterministic validator
 
 This is **the differentiator**. The agent prompt suggests; the validator
 enforces. Validators are `.py` (canonical, reviewable) + a TS port.
@@ -413,7 +443,11 @@ already exported helpers in `validators_builtin.ts`.
 
 ---
 
-## 6. Write a test
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §6 write a test
 
 Open `mobile/tests/trade_validators.spec.ts` (or create a new
 `gas_validator.spec.ts` — same pattern). Add **at least 3 pass + 3 fail
@@ -505,7 +539,11 @@ cd mobile && npm test -- tests/trade_validators.spec.ts
 
 ---
 
-## 7. Add the local data files
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §7 add the local data files
 
 These files are the *cartridge's worldview*. They drive prompt
 substitution, materials lists, problem code vocabularies, regulatory
@@ -547,7 +585,11 @@ Reference — what does each rule actually map to in MIEM-DNETN?
 
 ---
 
-## 8. Reseed and test in the dev server
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §8 reseed and test in the dev server
 
 ```bash
 cd mobile
@@ -578,7 +620,11 @@ npx cap open android
 
 ---
 
-## 9. Validate the cartridge in the runtime
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §9 validate the cartridge in the runtime
 
 Beyond your unit test for the validator, the runtime has integration
 hooks. The fastest end-to-end loop:
@@ -595,7 +641,11 @@ and `registry` lists your cartridge in the `loadAll` test, you're good.
 
 ---
 
-## 10. Commit
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §10 commit
 
 ```bash
 git add cartridges/trade-gasista \
@@ -613,7 +663,11 @@ Per CLAUDE.md §8.1 every PR must:
 
 ---
 
-## 11. Optional · cartridge data refresh
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §11 optional · cartridge data refresh
 
 Once you've published your cartridge, you can let users get updated
 material prices and brand catalogs **without releasing a new APK**.
@@ -634,7 +688,11 @@ GitHub Pages or Cloudflare Pages serving static JSON.
 
 ---
 
-## 12. What you've just built
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §12 what you've just built
 
 You added **a new trade vertical** to skillos_mini in under 30 minutes
 of typing, **without touching any of these things**:
@@ -658,7 +716,11 @@ they didn't, that's a runtime bug; open an issue.
 
 ---
 
-## 13. Where to go next
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+## ▸ §13 where to go next
 
 - [`USAGE.md`](USAGE.md) — what the end-user (the gasista) sees once
   this ships.
@@ -668,3 +730,15 @@ they didn't, that's a runtime bug; open an issue.
   capability) — the rule is *update the doc first, then the code*.
 
 Welcome to the cartridge ecosystem.
+
+<p align="center">
+  <img src="assets/divider.svg" alt="" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="assets/mark.svg" alt="" width="48"/>
+</p>
+
+<p align="center">
+  <sub><code>// BUILD.SUCCESS // 13 STEPS · trade-gasista · ARES.RUNTIME</code></sub>
+</p>

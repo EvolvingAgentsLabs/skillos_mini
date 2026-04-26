@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 200" role="img" aria-label="Usage">
+  <defs>
+    <radialGradient id="bgU" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#1a0500"/>
+      <stop offset="60%" stop-color="#0a0408"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </radialGradient>
+    <linearGradient id="ttlU" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffd9c2"/>
+      <stop offset="100%" stop-color="#ff2d00"/>
+    </linearGradient>
+    <filter id="gloU" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="g1"/>
+      <feGaussianBlur stdDeviation="10" result="g2"/>
+      <feMerge>
+        <feMergeNode in="g2"/>
+        <feMergeNode in="g1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cyU" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="g"/>
+      <feMerge>
+        <feMergeNode in="g"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="200" fill="url(#bgU)"/>
+
+  <!-- circuit lines -->
+  <g stroke="#ff2d00" stroke-width="1.4" opacity="0.45" fill="none" filter="url(#gloU)">
+    <path d="M 40 100 L 200 100 L 220 80 L 380 80"/>
+    <path d="M 880 100 L 1060 100 L 1080 120 L 1240 120"/>
+  </g>
+  <!-- nodes -->
+  <g fill="#ff6b1a" filter="url(#gloU)">
+    <circle cx="40" cy="100" r="3"/>
+    <circle cx="380" cy="80" r="3"/>
+    <circle cx="880" cy="100" r="3"/>
+    <circle cx="1240" cy="120" r="3"/>
+  </g>
+
+  <!-- corner brackets -->
+  <g stroke="#ff6b1a" stroke-width="2" fill="none" filter="url(#gloU)">
+    <polyline points="20,28 20,20 72,20"/>
+    <polyline points="1260,28 1260,20 1208,20"/>
+    <polyline points="20,172 20,180 72,180"/>
+    <polyline points="1260,172 1260,180 1208,180"/>
+  </g>
+
+  <text x="640" y="100" text-anchor="middle" font-size="56" letter-spacing="16"
+        font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-weight="900"
+        fill="url(#ttlU)" filter="url(#gloU)">USAGE GUIDE</text>
+
+  <text x="640" y="138" text-anchor="middle" font-size="11" letter-spacing="9"
+        font-family="ui-monospace, 'SF Mono', Menlo, monospace"
+        fill="#bff7ff" filter="url(#cyU)">FOTO   ·   DIAGNÓSTICO   ·   PDF   ·   COMPARTIR</text>
+
+  <line x1="380" y1="158" x2="900" y2="158" stroke="#00d4ff" stroke-width="1" opacity="0.55" filter="url(#cyU)">
+    <animate attributeName="opacity" values="0.25;0.7;0.25" dur="3s" repeatCount="indefinite"/>
+  </line>
+
+  <rect x="0" y="0" width="1280" height="2" fill="#00d4ff" opacity="0.4" filter="url(#cyU)">
+    <animate attributeName="y" values="-4;200;-4" dur="7s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;0.5;0.5;0" keyTimes="0;0.1;0.9;1" dur="7s" repeatCount="indefinite"/>
+  </rect>
+
+  <text x="40" y="40" font-size="10" font-family="ui-monospace, monospace"
+        fill="#ff6b1a" letter-spacing="2" filter="url(#gloU)">DOC//USE</text>
+  <text x="1240" y="40" text-anchor="end" font-size="10" font-family="ui-monospace, monospace"
+        fill="#00d4ff" letter-spacing="2" filter="url(#cyU)">ES-UY</text>
+</svg>
