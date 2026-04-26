@@ -209,7 +209,7 @@
     <rect x="1230" y="198" width="8" height="8" fill="#0a0408" opacity="1.00"><animate attributeName="opacity" values="1.00;0.50;1.00" dur="3.2s" begin="-0.59s" repeatCount="indefinite"/></rect>
   <text x="290" y="178" font-family="'SF Mono','Menlo','Consolas','Courier New',monospace" font-size="12" fill="#ffd9c2" font-weight="400">▸ scaffold       $ mkdir cartridges/trade-gasista/{agents,flows,schemas,validators,data}</text>
   <text x="290" y="194" font-family="'SF Mono','Menlo','Consolas','Courier New',monospace" font-size="12" fill="#ffd9c2" font-weight="400">▸ author         $ vim cartridge.yaml          ▸ ui: + hooks: + flows:</text>
-  <text x="290" y="210" font-family="'SF Mono','Menlo','Consolas','Courier New',monospace" font-size="12" fill="#ffd9c2" font-weight="400">▸ ship           $ npm test && git commit      ▸ 6 fixtures · 0 errors</text>
+  <text x="290" y="210" font-family="'SF Mono','Menlo','Consolas','Courier New',monospace" font-size="12" fill="#ffd9c2" font-weight="400">▸ ship           $ npm test &amp;&amp; git commit      ▸ 6 fixtures · 0 errors</text>
   <text x="40" y="50" font-family="'SF Mono','Menlo','Consolas','Courier New',monospace" font-size="13" fill="#ffd9c2" font-weight="400">$ skillos render --doc=doc//build</text>
   <text x="40" y="70" font-family="'SF Mono','Menlo','Consolas','Courier New',monospace" font-size="12" fill="#ff6b1a" font-weight="400" filter="url(#glow)">[ OK ] context loaded · 12 sections · 9 diagrams</text>
   

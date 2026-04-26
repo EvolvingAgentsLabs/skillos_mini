@@ -99,6 +99,31 @@ app start.
   <img src="docs/assets/divider.svg" alt="" width="100%"/>
 </p>
 
+## ▸ the app · live mockup
+
+The app is a **Svelte 5 + Capacitor** HTML application — every screen
+below is rendered by real components in [`mobile/src/components/`](mobile/src/components/).
+This is what the trade actually sees:
+
+<p align="center">
+  <img src="docs/assets/app-mockup.svg" alt="HomeScreen + Capture + Report PDF mockup" width="100%"/>
+</p>
+
+| Screen | Component | What's happening |
+|---|---|---|
+| `[1] HOME` | [`HomeScreen.svelte`](mobile/src/components/HomeScreen.svelte) + [`TradeBanner.svelte`](mobile/src/components/TradeBanner.svelte) + [`JobsList.svelte`](mobile/src/components/JobsList.svelte) | Active cartridge drives the brand color, primary CTA, and Library mode. The chip in the header (`⚡ Electricista`) is the only place the runtime tells you which cartridge is steering the shell |
+| `[2] CAPTURE` | [`PhotoCapture.svelte`](mobile/src/components/PhotoCapture.svelte) wrapped in [`TradeFlowSheet.svelte`](mobile/src/components/TradeFlowSheet.svelte) | Single-tap shutter, role chip auto-inferred (`Antes / Durante / Después / Detalle`), no immediate form. `MediaProvider.capturePhoto()` writes to IndexedDB blob store |
+| `[3] REPORT` | [`TradeFlowSheet.svelte`](mobile/src/components/TradeFlowSheet.svelte) + [`pdf.ts`](mobile/src/lib/report/pdf.ts) | Live PDF preview rendered by **pdfmake on-device**. Header logo + matrícula come from the saved professional profile. `ShareProvider.sharePDF` opens the native share sheet → WhatsApp |
+
+The blue you see on the trade banner is `cartridge.ui.brand_color` —
+the trade-electricista cartridge declares `#2563EB`; trade-plomero
+declares `#0EA5E9` and the same components paint themselves cyan; the
+runtime never knows which trade it's serving.
+
+<p align="center">
+  <img src="docs/assets/divider.svg" alt="" width="100%"/>
+</p>
+
 ## ▸ what's in the box
 
 ### three production cartridges

@@ -1,0 +1,347 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="skillos_mini app mockup — HomeScreen + Capture + Report">
+  <defs>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="g"/>
+      <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="strongGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="g1"/>
+      <feGaussianBlur stdDeviation="8" result="g2"/>
+      <feMerge><feMergeNode in="g2"/><feMergeNode in="g1"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="electricistaBrand" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1E40AF"/>
+    </linearGradient>
+    <linearGradient id="aresFrame" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff6b1a" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#ff2d00" stop-opacity="0.6"/>
+    </linearGradient>
+    <pattern id="scan" x="0" y="0" width="3" height="3" patternUnits="userSpaceOnUse">
+      <rect width="3" height="1" fill="#ff2d00" opacity="0.04"/>
+    </pattern>
+  </defs>
+
+  <!-- background -->
+  <rect width="1280" height="720" fill="#000000"/>
+  <rect width="1280" height="720" fill="url(#scan)"/>
+
+  <!-- title bar -->
+  <text x="40" y="44" font-family="'SF Mono','Menlo','Consolas',monospace" font-size="14"
+        fill="#ff6b1a" filter="url(#glow)">┌─[ live//mockup ]──────────────────────────────────────────── electricista · v0.1.0 ──┐</text>
+  <text x="40" y="700" font-family="'SF Mono','Menlo','Consolas',monospace" font-size="14"
+        fill="#ff6b1a" filter="url(#glow)">└────────── capture · diagnose · share ────────── 3 screens · zero backend ──────────┘</text>
+
+  <!-- ============================================================ -->
+  <!--  PHONE 1 — HOME SCREEN with trade banner                     -->
+  <!-- ============================================================ -->
+  <g transform="translate(60, 70)">
+    <!-- phone bezel -->
+    <rect x="0" y="0" width="300" height="600" rx="36" fill="#0a0a0f"
+          stroke="url(#aresFrame)" stroke-width="2" filter="url(#glow)"/>
+    <!-- camera notch -->
+    <rect x="120" y="14" width="60" height="14" rx="7" fill="#000"/>
+    <circle cx="167" cy="21" r="3" fill="#1a1a1f"/>
+    <!-- screen surface -->
+    <rect x="10" y="44" width="280" height="540" rx="6" fill="#fafafa"/>
+
+    <!-- status bar -->
+    <text x="24" y="62" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="11"
+          fill="#111" font-weight="600">9:41</text>
+    <text x="276" y="62" text-anchor="end" font-family="-apple-system,sans-serif"
+          font-size="10" fill="#111">5G ▲ 99%</text>
+
+    <!-- app header (Home) -->
+    <text x="24" y="92" font-family="-apple-system,sans-serif" font-size="18"
+          font-weight="700" fill="#111">Home</text>
+    <!-- trade chip -->
+    <rect x="160" y="78" width="80" height="20" rx="10" fill="#2563EB"/>
+    <text x="200" y="92" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="11" fill="#fff" font-weight="600">⚡ Electricista</text>
+    <!-- settings cog -->
+    <circle cx="262" cy="88" r="11" fill="none" stroke="#9ca3af" stroke-width="1"/>
+    <text x="262" y="92" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="11" fill="#6b7280">⚙</text>
+
+    <!-- subtitle -->
+    <text x="24" y="108" font-family="-apple-system,sans-serif" font-size="10"
+          fill="#6b7280">Your pinned Recipes. Tap to run.</text>
+
+    <!-- TRADE BANNER — electricista blue gradient -->
+    <g transform="translate(20, 124)">
+      <rect width="260" height="120" rx="16" fill="url(#electricistaBrand)" filter="url(#glow)"/>
+      <text x="16" y="28" font-family="-apple-system,sans-serif" font-size="16"
+            fill="#fff" font-weight="700">⚡ Electricista</text>
+      <text x="244" y="28" text-anchor="end" font-family="-apple-system,sans-serif"
+            font-size="10" fill="#dbeafe">Cambiar</text>
+      <!-- primary CTA -->
+      <rect x="14" y="42" width="232" height="40" rx="10" fill="#ffffff"/>
+      <text x="130" y="66" text-anchor="middle" font-family="-apple-system,sans-serif"
+            font-size="14" fill="#1E40AF" font-weight="700">Nuevo trabajo</text>
+      <!-- secondary CTA -->
+      <rect x="14" y="90" width="232" height="22" rx="8" fill="#1E40AF" opacity="0.6"/>
+      <text x="130" y="106" text-anchor="middle" font-family="-apple-system,sans-serif"
+            font-size="11" fill="#fff">Sólo presupuestar</text>
+    </g>
+
+    <!-- TRABAJOS RECIENTES section -->
+    <text x="24" y="280" font-family="-apple-system,sans-serif" font-size="11"
+          font-weight="700" fill="#2563EB" letter-spacing="0.5">TRABAJOS RECIENTES (12)</text>
+
+    <!-- job card 1 -->
+    <g transform="translate(20, 296)">
+      <rect width="260" height="56" rx="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
+      <rect x="8" y="8" width="40" height="40" rx="8" fill="#1a0500"/>
+      <text x="28" y="34" text-anchor="middle" font-family="-apple-system,sans-serif"
+            font-size="16" fill="#ff6b1a">📷</text>
+      <text x="56" y="22" font-family="-apple-system,sans-serif" font-size="12"
+            font-weight="600" fill="#111">Cocina cliente Pérez · cable VC</text>
+      <text x="252" y="22" text-anchor="end" font-family="-apple-system,sans-serif"
+            font-size="9" fill="#6b7280">hoy</text>
+      <text x="56" y="42" font-family="-apple-system,sans-serif" font-size="9"
+            fill="#16a34a" font-weight="600">Compartido</text>
+      <text x="252" y="42" text-anchor="end" font-family="-apple-system,sans-serif"
+            font-size="9" fill="#6b7280">3 fotos</text>
+    </g>
+
+    <!-- job card 2 -->
+    <g transform="translate(20, 360)">
+      <rect width="260" height="56" rx="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
+      <rect x="8" y="8" width="40" height="40" rx="8" fill="#1a0500"/>
+      <text x="28" y="34" text-anchor="middle" font-family="-apple-system,sans-serif"
+            font-size="16" fill="#ff6b1a">📷</text>
+      <text x="56" y="22" font-family="-apple-system,sans-serif" font-size="12"
+            font-weight="600" fill="#111">Tablero principal · revisión</text>
+      <text x="252" y="22" text-anchor="end" font-family="-apple-system,sans-serif"
+            font-size="9" fill="#6b7280">ayer</text>
+      <text x="56" y="42" font-family="-apple-system,sans-serif" font-size="9"
+            fill="#2563EB" font-weight="600">Listo para compartir</text>
+      <text x="252" y="42" text-anchor="end" font-family="-apple-system,sans-serif"
+            font-size="9" fill="#6b7280">5 fotos</text>
+    </g>
+
+    <!-- job card 3 -->
+    <g transform="translate(20, 424)">
+      <rect width="260" height="56" rx="12" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
+      <rect x="8" y="8" width="40" height="40" rx="8" fill="#1a0500"/>
+      <text x="28" y="34" text-anchor="middle" font-family="-apple-system,sans-serif"
+            font-size="16" fill="#ff6b1a">📷</text>
+      <text x="56" y="22" font-family="-apple-system,sans-serif" font-size="12"
+            font-weight="600" fill="#111">Casa Maldonado · iluminación</text>
+      <text x="252" y="22" text-anchor="end" font-family="-apple-system,sans-serif"
+            font-size="9" fill="#6b7280">2d</text>
+      <text x="56" y="42" font-family="-apple-system,sans-serif" font-size="9"
+            fill="#2563EB" font-weight="600">Diagnóstico hecho</text>
+      <text x="252" y="42" text-anchor="end" font-family="-apple-system,sans-serif"
+            font-size="9" fill="#6b7280">2 fotos</text>
+    </g>
+
+    <!-- bottom tab bar -->
+    <rect x="0" y="544" width="300" height="40" fill="#f3f4f6"/>
+    <text x="40" y="568" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="10" fill="#2563EB" font-weight="700">Home</text>
+    <text x="115" y="568" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="10" fill="#9ca3af">Runs</text>
+    <text x="190" y="568" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="10" fill="#9ca3af">Skills</text>
+    <text x="265" y="568" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="10" fill="#9ca3af">Brain</text>
+    <line x1="20" y1="544" x2="60" y2="544" stroke="#2563EB" stroke-width="2"/>
+
+    <!-- caption -->
+    <text x="150" y="624" text-anchor="middle" font-family="'SF Mono',monospace"
+          font-size="11" fill="#ff6b1a" filter="url(#glow)">[ 1 ] HOME · pinned recipes + trade banner</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!--  PHONE 2 — CAPTURE SCREEN                                    -->
+  <!-- ============================================================ -->
+  <g transform="translate(490, 70)">
+    <rect x="0" y="0" width="300" height="600" rx="36" fill="#0a0a0f"
+          stroke="url(#aresFrame)" stroke-width="2" filter="url(#glow)"/>
+    <rect x="120" y="14" width="60" height="14" rx="7" fill="#000"/>
+    <circle cx="167" cy="21" r="3" fill="#1a1a1f"/>
+    <!-- camera viewport — black/very dark -->
+    <rect x="10" y="44" width="280" height="540" rx="6" fill="#000"/>
+
+    <!-- top bar in capture -->
+    <text x="24" y="68" font-family="-apple-system,sans-serif" font-size="14"
+          fill="#fff" opacity="0.7">✕</text>
+    <!-- role chips -->
+    <g transform="translate(60, 56)">
+      <rect width="46" height="20" rx="10" fill="#2563EB"/>
+      <text x="23" y="14" text-anchor="middle" font-family="-apple-system,sans-serif"
+            font-size="10" fill="#fff" font-weight="600">Antes</text>
+      <rect x="50" width="48" height="20" rx="10" fill="#ffffff" opacity="0.12"/>
+      <text x="74" y="14" text-anchor="middle" font-family="-apple-system,sans-serif"
+            font-size="10" fill="#fff">Durante</text>
+      <rect x="102" width="50" height="20" rx="10" fill="#ffffff" opacity="0.12"/>
+      <text x="127" y="14" text-anchor="middle" font-family="-apple-system,sans-serif"
+            font-size="10" fill="#fff">Después</text>
+      <rect x="156" width="46" height="20" rx="10" fill="#ffffff" opacity="0.12"/>
+      <text x="179" y="14" text-anchor="middle" font-family="-apple-system,sans-serif"
+            font-size="10" fill="#fff">Detalle</text>
+    </g>
+    <text x="276" y="68" text-anchor="end" font-family="-apple-system,sans-serif"
+          font-size="11" fill="#fff" opacity="0.7">3</text>
+
+    <!-- mock viewfinder · dim grid + framing brackets -->
+    <g stroke="#ffffff" stroke-width="1" opacity="0.18">
+      <line x1="10" y1="200" x2="290" y2="200"/>
+      <line x1="10" y1="380" x2="290" y2="380"/>
+      <line x1="103" y1="92" x2="103" y2="500"/>
+      <line x1="197" y1="92" x2="197" y2="500"/>
+    </g>
+    <!-- corner brackets in viewfinder -->
+    <g stroke="#fff" stroke-width="2" fill="none" opacity="0.55">
+      <polyline points="40,140 40,128 60,128"/>
+      <polyline points="260,140 260,128 240,128"/>
+      <polyline points="40,460 40,472 60,472"/>
+      <polyline points="260,460 260,472 240,472"/>
+    </g>
+
+    <!-- mock subject — silhouette of an electrical panel -->
+    <g opacity="0.42" transform="translate(80,180)">
+      <rect width="140" height="180" rx="6" fill="#374151" stroke="#6b7280" stroke-width="1"/>
+      <rect x="12" y="14" width="116" height="26" rx="3" fill="#1f2937"/>
+      <rect x="12" y="50" width="56" height="24" rx="3" fill="#1f2937"/>
+      <rect x="74" y="50" width="54" height="24" rx="3" fill="#1f2937"/>
+      <rect x="12" y="84" width="36" height="20" rx="2" fill="#1f2937"/>
+      <rect x="52" y="84" width="36" height="20" rx="2" fill="#1f2937"/>
+      <rect x="92" y="84" width="36" height="20" rx="2" fill="#1f2937"/>
+      <rect x="12" y="116" width="116" height="14" rx="2" fill="#1f2937"/>
+      <rect x="12" y="138" width="116" height="14" rx="2" fill="#1f2937"/>
+      <rect x="12" y="160" width="56" height="12" rx="2" fill="#1f2937"/>
+    </g>
+
+    <!-- shutter button -->
+    <circle cx="150" cy="540" r="32" fill="#2563EB" stroke="#fff" stroke-width="4"
+            filter="url(#glow)"/>
+    <text x="150" y="548" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="22" fill="#fff">📷</text>
+
+    <!-- side actions -->
+    <text x="44" y="500" font-family="-apple-system,sans-serif" font-size="14" fill="#fff" opacity="0.65">🎤</text>
+    <text x="256" y="500" text-anchor="end" font-family="-apple-system,sans-serif" font-size="14" fill="#fff" opacity="0.65">🔦</text>
+
+    <!-- bottom bar (capture) -->
+    <rect x="0" y="544" width="300" height="40" fill="#000"/>
+    <text x="24" y="568" font-family="-apple-system,sans-serif" font-size="10"
+          fill="#9ca3af">3 fotos</text>
+    <rect x="180" y="554" width="100" height="22" rx="6" fill="#2563EB"/>
+    <text x="230" y="569" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="11" fill="#fff" font-weight="600">Continuar</text>
+
+    <text x="150" y="624" text-anchor="middle" font-family="'SF Mono',monospace"
+          font-size="11" fill="#ff6b1a" filter="url(#glow)">[ 2 ] CAPTURE · viewfinder + role chip</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!--  PHONE 3 — REPORT PDF READY TO SHARE                         -->
+  <!-- ============================================================ -->
+  <g transform="translate(920, 70)">
+    <rect x="0" y="0" width="300" height="600" rx="36" fill="#0a0a0f"
+          stroke="url(#aresFrame)" stroke-width="2" filter="url(#glow)"/>
+    <rect x="120" y="14" width="60" height="14" rx="7" fill="#000"/>
+    <circle cx="167" cy="21" r="3" fill="#1a1a1f"/>
+    <rect x="10" y="44" width="280" height="540" rx="6" fill="#fff"/>
+
+    <!-- header (sheet style) -->
+    <rect x="10" y="44" width="280" height="46" fill="#2563EB"/>
+    <text x="24" y="74" font-family="-apple-system,sans-serif" font-size="13"
+          fill="#fff" opacity="0.85">✕</text>
+    <text x="150" y="74" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="13" fill="#fff" font-weight="700">⚡ Electricista</text>
+    <rect x="244" y="58" width="40" height="20" rx="10" fill="#1E40AF"/>
+    <text x="264" y="71" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="9" fill="#fff" font-weight="600">3 · Reporte</text>
+
+    <!-- "Reporte" heading -->
+    <text x="24" y="116" font-family="-apple-system,sans-serif" font-size="13"
+          font-weight="700" fill="#2563EB">Reporte</text>
+
+    <!-- mock PDF preview -->
+    <g transform="translate(20, 124)">
+      <rect width="260" height="370" rx="6" fill="#fafafa" stroke="#e5e7eb" stroke-width="1"/>
+      <!-- pdf header -->
+      <text x="14" y="22" font-family="serif" font-size="13" font-weight="700"
+            fill="#1E40AF">Reporte Electricista</text>
+      <text x="14" y="36" font-family="serif" font-size="8" fill="#6b7280">Reporte de trabajo</text>
+      <text x="246" y="22" text-anchor="end" font-family="serif" font-size="9"
+            font-weight="700" fill="#111">Daniel R. Electricidad</text>
+      <text x="246" y="34" text-anchor="end" font-family="serif" font-size="7" fill="#6b7280">Mat. UTE-12345</text>
+      <text x="246" y="44" text-anchor="end" font-family="serif" font-size="7" fill="#6b7280">+598 99 999 999</text>
+      <line x1="14" y1="50" x2="246" y2="50" stroke="#e5e7eb"/>
+
+      <text x="14" y="68" font-family="serif" font-size="9" font-weight="700"
+            fill="#1E40AF">Resumen</text>
+      <text x="14" y="80" font-family="serif" font-size="7" fill="#374151">Se rehizo el circuito eléctrico de la</text>
+      <text x="14" y="89" font-family="serif" font-size="7" fill="#374151">cocina con cable de sección adecuada al</text>
+      <text x="14" y="98" font-family="serif" font-size="7" fill="#374151">horno eléctrico, y se agregó un disyuntor</text>
+      <text x="14" y="107" font-family="serif" font-size="7" fill="#374151">diferencial 30 mA conforme IEC 60364.</text>
+
+      <text x="14" y="126" font-family="serif" font-size="9" font-weight="700"
+            fill="#1E40AF">Antes</text>
+      <rect x="14" y="132" width="68" height="50" fill="#cbd5e1" stroke="#94a3b8"/>
+      <rect x="90" y="132" width="68" height="50" fill="#cbd5e1" stroke="#94a3b8"/>
+      <rect x="166" y="132" width="68" height="50" fill="#cbd5e1" stroke="#94a3b8"/>
+      <text x="48" y="161" text-anchor="middle" font-family="serif" font-size="14" fill="#64748b">📷</text>
+      <text x="124" y="161" text-anchor="middle" font-family="serif" font-size="14" fill="#64748b">📷</text>
+      <text x="200" y="161" text-anchor="middle" font-family="serif" font-size="14" fill="#64748b">📷</text>
+
+      <text x="14" y="200" font-family="serif" font-size="9" font-weight="700"
+            fill="#1E40AF">Trabajo realizado</text>
+      <text x="14" y="212" font-family="serif" font-size="7" fill="#374151">▸ Reemplazo cable VC 1.5→4mm² cocina</text>
+      <text x="14" y="222" font-family="serif" font-size="7" fill="#374151">▸ Instalación disyuntor 32A 30mA</text>
+
+      <text x="14" y="240" font-family="serif" font-size="9" font-weight="700"
+            fill="#1E40AF">Después</text>
+      <rect x="14" y="246" width="68" height="50" fill="#fde68a" stroke="#fbbf24"/>
+      <rect x="90" y="246" width="68" height="50" fill="#fde68a" stroke="#fbbf24"/>
+
+      <line x1="14" y1="320" x2="246" y2="320" stroke="#e5e7eb"/>
+      <text x="14" y="334" font-family="serif" font-size="6" fill="#9ca3af">Esta aplicación asiste con documentación.</text>
+      <text x="14" y="343" font-family="serif" font-size="6" fill="#9ca3af">No sustituye juicio profesional matriculado.</text>
+      <text x="246" y="343" text-anchor="end" font-family="serif" font-size="6" fill="#9ca3af">1 / 1</text>
+    </g>
+
+    <!-- bottom bar with share button -->
+    <rect x="10" y="500" width="280" height="84" fill="#f9fafb"/>
+    <rect x="20" y="510" width="100" height="32" rx="8" fill="none" stroke="#d1d5db" stroke-width="1"/>
+    <text x="70" y="530" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="11" fill="#374151">Editar</text>
+    <rect x="130" y="510" width="150" height="32" rx="8" fill="#16a34a" filter="url(#glow)"/>
+    <text x="205" y="530" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="11" fill="#fff" font-weight="700">Compartir por WhatsApp</text>
+    <text x="150" y="566" text-anchor="middle" font-family="-apple-system,sans-serif"
+          font-size="9" fill="#6b7280">PDF generado on-device · pdfmake</text>
+
+    <text x="150" y="624" text-anchor="middle" font-family="'SF Mono',monospace"
+          font-size="11" fill="#ff6b1a" filter="url(#glow)">[ 3 ] REPORT · branded PDF + WhatsApp share</text>
+  </g>
+
+  <!-- annotations connecting the screens -->
+  <g stroke="#ff6b1a" stroke-width="1" stroke-dasharray="4 3" fill="none" opacity="0.55" filter="url(#glow)">
+    <path d="M 360 370 L 490 370"/>
+    <path d="M 790 370 L 920 370"/>
+  </g>
+  <g fill="#ff6b1a" filter="url(#glow)">
+    <polygon points="487,367 478,370 487,373"/>
+    <polygon points="917,367 908,370 917,373"/>
+  </g>
+  <text x="425" y="358" text-anchor="middle" font-family="'SF Mono',monospace"
+        font-size="10" fill="#ff6b1a" filter="url(#glow)">tap "Nuevo trabajo"</text>
+  <text x="855" y="358" text-anchor="middle" font-family="'SF Mono',monospace"
+        font-size="10" fill="#ff6b1a" filter="url(#glow)">capture → diagnose → PDF</text>
+
+  <!-- live indicator dot on phone 1 -->
+  <circle cx="120" cy="700" r="3" fill="#ff2d00" filter="url(#strongGlow)">
+    <animate attributeName="opacity" values="0.4;1;0.4" dur="1.4s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- scanline overlay (animated) -->
+  <rect x="0" y="-2" width="1280" height="2" fill="#00d4ff" opacity="0.35" filter="url(#glow)">
+    <animate attributeName="y" values="-4;720;-4" dur="9s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;0.4;0.4;0" keyTimes="0;0.1;0.9;1" dur="9s" repeatCount="indefinite"/>
+  </rect>
+</svg>
