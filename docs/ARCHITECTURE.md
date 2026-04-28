@@ -1,14 +1,4 @@
-<p align="center">
-  <img src="assets/banner-architecture.svg" alt="ARCHITECTURE" width="100%"/>
-</p>
-
-<p align="center">
-  <strong>skillos_mini</strong> &nbsp;//&nbsp; software architecture &nbsp;//&nbsp; <code>v0.1.0</code>
-</p>
-
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
+# Architecture
 
 > Companion to [`CLAUDE.md`](../CLAUDE.md). The CLAUDE.md is the *contract*
 > (what we will and won't build). This file is the *map* (what's wired to
@@ -16,7 +6,7 @@
 
 ---
 
-## ▸ §1 system overview
+## System overview
 
 skillos_mini is an on-device, mobile-first agentic OS for tradespeople.
 The app shell is a Svelte 5 + Capacitor application that orchestrates
@@ -72,11 +62,7 @@ flowchart LR
 unless the user has tapped Share, configured a cloud LLM, or (post-v1.2)
 opted into dataset contribution.
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §2 the cartridge model
+## The cartridge model
 
 A cartridge is a directory under `cartridges/<name>/` with a fixed shape
 the runtime understands. The trade cartridges all follow this layout:
@@ -144,11 +130,7 @@ flowchart LR
 A rule update (e.g. new IEC edition) is a Python diff, not a prompt
 rewrite — and it's reviewable like any other code change.
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §3 layered architecture
+## Layered architecture
 
 ```mermaid
 %%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#1a0500','primaryTextColor':'#ffd9c2','primaryBorderColor':'#ff2d00','lineColor':'#ff6b1a','secondaryColor':'#001a24','tertiaryColor':'#0a0408','background':'#0a0408','mainBkg':'#1a0500','clusterBkg':'#0a0408','clusterBorder':'#ff6b1a','edgeLabelBackground':'#0a0408','fontFamily':'ui-monospace, monospace'}}}%%
@@ -234,11 +216,7 @@ The strict rule (CLAUDE.md §4.3): **layers 2-6 never import `@capacitor/*`
 directly.** They go through Layer 1 provider interfaces. The Capacitor
 adapter is the *only* Capacitor consumer.
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §4 the trade-app loop · sequence
+## The trade-app loop
 
 This is the killer flow Daniel (electricista), Mauricio (plomero) and
 Verónica (pintora) asked for in the simulated interviews.
@@ -304,11 +282,7 @@ Notes:
   app mid-flow and reopening on the Job Library re-enters at the right
   step (`resumeStepFor`).
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §5 the vision pipeline · CLAUDE.md §7.3
+## The vision pipeline
 
 Two paths share the same call site. Whichever provider the user
 configured per-project is what runs.
@@ -355,11 +329,7 @@ The trade picks per-project (Settings → Provider). The default is **off**
 — no cloud LLM auto-runs (CLAUDE.md §12). Gemma 4 local is the privacy-
 preserving recommendation; cloud is a fallback for older devices.
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §6 data flow · what's persisted where
+## Data flow
 
 ```mermaid
 %%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#1a0500','primaryTextColor':'#ffd9c2','primaryBorderColor':'#ff2d00','lineColor':'#ff6b1a','secondaryColor':'#001a24','tertiaryColor':'#0a0408','background':'#0a0408','mainBkg':'#1a0500','clusterBkg':'#0a0408','clusterBorder':'#ff6b1a','edgeLabelBackground':'#0a0408','fontFamily':'ui-monospace, monospace'}}}%%
@@ -408,11 +378,7 @@ Photos are **refs** (`uri: "capacitor-fs://skillos/photos/<id>"`). The
 Filesystem is the source of truth for bytes; IndexedDB only stores
 references and metadata.
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §7 state machine · the trade flow
+## State machine
 
 ```mermaid
 %%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#1a0500','primaryTextColor':'#ffd9c2','primaryBorderColor':'#ff2d00','lineColor':'#ff6b1a','secondaryColor':'#001a24','tertiaryColor':'#0a0408','background':'#0a0408','mainBkg':'#1a0500','edgeLabelBackground':'#0a0408','fontFamily':'ui-monospace, monospace'}}}%%
@@ -452,11 +418,7 @@ stateDiagram-v2
 The quote share **does not** finalize — the trade can return later, do
 the work, and ship a final report from the same job.
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §8 build pipeline
+## Build pipeline
 
 ### web dev
 
@@ -495,11 +457,7 @@ flowchart LR
 CLAUDE.md §3.3 keeps iOS off the table for now; the iOS plugin is a
 stub.
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §9 cross-cutting invariants
+## Cross-cutting invariants
 
 These are CLAUDE.md §9.3 made operational.
 
@@ -523,11 +481,7 @@ The invariants the test suite enforces:
 - `professional_profile.svelte.ts` normalizes/trims so empty fields
   never leak into a PDF footer the user never reviewed.
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §10 test coverage map
+## Test coverage map
 
 ```mermaid
 %%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#1a0500','primaryTextColor':'#ffd9c2','primaryBorderColor':'#ff2d00','lineColor':'#ff6b1a','secondaryColor':'#001a24','tertiaryColor':'#0a0408','background':'#0a0408','mainBkg':'#1a0500','clusterBkg':'#0a0408','clusterBorder':'#ff6b1a','edgeLabelBackground':'#0a0408','fontFamily':'ui-monospace, monospace'}}}%%
@@ -568,11 +522,7 @@ flowchart TB
 Total: **37 spec files, 278 cases.** New cases this milestone: **150+**
 (the trade-app vertical from scratch).
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §11 decision log · architecture-level
+## Decision log
 
 These are the architectural calls that shaped what's above. CLAUDE.md
 §13 has the full list; here are the ones that surface as topology.
@@ -587,11 +537,7 @@ These are the architectural calls that shaped what's above. CLAUDE.md
 | Schema-driven UI (`ui-hints.json` planned) | One form renderer for all cartridges |
 | Filesystem for blobs, IndexedDB for refs | IndexedDB quota issues on photos > 50MB; FS is the right primitive |
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §12 what's not here yet
+## What's not here yet
 
 - **iOS path** — the LiteRT iOS plugin is a stub. Capacitor camera/share
   work but no on-device vision. Off-roadmap until the SDK lands.
@@ -606,14 +552,3 @@ These are the architectural calls that shaped what's above. CLAUDE.md
 These are *intentionally* not built yet. The CLAUDE.md §3.3 list is the
 authoritative contract on scope.
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-<p align="center">
-  <img src="assets/mark.svg" alt="" width="48"/>
-</p>
-
-<p align="center">
-  <sub><code>// ARCH.MAP // 12 SECTIONS · 9 DIAGRAMS · 278 TESTS</code></sub>
-</p>

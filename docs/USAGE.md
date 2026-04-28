@@ -1,14 +1,4 @@
-<p align="center">
-  <img src="assets/banner-usage.svg" alt="USAGE GUIDE — foto · diagnóstico · PDF · compartir" width="100%"/>
-</p>
-
-<p align="center">
-  <strong>Guía de uso</strong> &nbsp;//&nbsp; <code>skillos_mini</code> &nbsp;//&nbsp; <code>es-UY</code>
-</p>
-
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
+# Usage
 
 > Para electricistas, plomeros, pintores y otros oficios. Cómo usar la
 > app en un trabajo real, desde la primera apertura hasta el reporte
@@ -20,7 +10,7 @@ querés autorizar tu propio cartridge (oficio), mirá
 
 ---
 
-## ▸ §1 primera apertura · 5 minutos
+## Primera apertura
 
 Cuando abrís la app por primera vez ves un onboarding rápido de 4
 pantallas:
@@ -56,11 +46,7 @@ cargarlos ya:
 
 ---
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §2 tu primer trabajo · paso a paso
+## Tu primer trabajo
 
 Ejemplo: electricista atiende un cliente con problema en la cocina.
 
@@ -166,11 +152,7 @@ Tap **"Compartir por WhatsApp"**.
 
 ---
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §3 trabajos recientes · library
+## Trabajos recientes
 
 En la pantalla principal, debajo del banner de tu oficio, ves
 **"Trabajos recientes (N)"** con tarjetas.
@@ -198,11 +180,7 @@ nuevos clientes lo que hiciste antes.
 
 ---
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §4 flujos especiales
+## Flujos especiales
 
 ### Solo presupuestar (sin ejecutar)
 
@@ -238,11 +216,7 @@ El flujo por defecto del plomero es **"Atender llamada"** (urgencia):
 
 ---
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §5 configuración · settings ⚙
+## Configuracion
 
 Tap el ⚙ arriba a la derecha en Home.
 
@@ -276,11 +250,7 @@ Tap el ⚙ arriba a la derecha en Home.
 
 ---
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §6 privacidad · qué sale del celular
+## Privacidad
 
 | Acción | ¿Sale algo del celular? |
 |---|---|
@@ -299,11 +269,7 @@ funcionando completa.
 
 ---
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §7 problemas comunes
+## Problemas comunes
 
 ### "La cámara no abre"
 
@@ -351,11 +317,7 @@ Vos firmás. La IA es una herramienta como el multímetro.
 
 ---
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §8 recomendaciones por oficio
+## Recomendaciones por oficio
 
 ### Electricista
 
@@ -391,11 +353,7 @@ Vos firmás. La IA es una herramienta como el multímetro.
 
 ---
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-## ▸ §9 próximos pasos
+## Proximos pasos
 
 Cuando hayas hecho 3-5 trabajos con la app:
 - Mirá las **estadísticas** en Settings — cuántos PDFs generaste.
@@ -410,14 +368,3 @@ Para autorizar tu propio cartridge (otro oficio: gasista, herrero,
 carpintero, jardinero, …) seguí
 [`TUTORIAL.md`](TUTORIAL.md).
 
-<p align="center">
-  <img src="assets/divider.svg" alt="" width="100%"/>
-</p>
-
-<p align="center">
-  <img src="assets/mark.svg" alt="" width="48"/>
-</p>
-
-<p align="center">
-  <sub><code>// USAGE.GUIDE // ELECTRICISTA · PLOMERO · PINTOR</code></sub>
-</p>
