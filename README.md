@@ -1,6 +1,6 @@
 # trade
 
-Run sealed trade cartridges from the terminal. Each cartridge bundles domain knowledge with deterministic validators — the LLM proposes, code enforces.
+On-device trade assistant for Android. Describe what you need in natural language — the app routes your goal to a sealed cartridge, runs it locally, and enforces trade regulations in code.
 
 Three production cartridges: electricista (IEC 60364), plomero (plumbing diagnostics), pintor (painting quotes).
 
@@ -10,56 +10,39 @@ Part of the [Evolving Agents](https://github.com/EvolvingAgentsLabs) ecosystem.
 
 ```bash
 git clone https://github.com/EvolvingAgentsLabs/skillos_mini.git
-cd skillos_mini
-pip install pyyaml    # only runtime dependency
+cd skillos_mini/mobile && npm install
 ```
 
 ## Use
 
 ```bash
-# List available cartridges
-trade list
+# Start dev server
+npm run dev          # http://localhost:5173
 
-# Run a diagnosis
-trade electricista "panel has exposed wiring and no RCD"
+# Run tests
+npm test             # 278 vitest cases
 
-# Run a quote
-trade plomero "urgencia: water leak under kitchen sink"
-
-# Portfolio quote
-trade pintor "3 bedrooms, latex paint, smooth walls, antes/despues"
-
-# Force a specific flow
-trade electricista --flow quote_only "install new circuit for AC unit"
+# Type check
+npx svelte-check
 ```
 
-### Web terminal (dev mode)
+In the chat UI, type goals in natural language:
 
-```bash
-cd mobile && npm install
-npm run dev          # http://localhost:5173 — terminal chat UI
+```
+"panel has exposed wiring and no RCD"
+"urgencia: water leak under kitchen sink"
+"3 bedrooms, latex paint, smooth walls"
 ```
 
-### Run tests
-
-```bash
-cd mobile && npm test    # 278 vitest cases
-```
+The goal router matches a cartridge automatically. Follow-up questions work within the same session — the blackboard context carries over.
 
 ## How it works
 
-A cartridge is a self-contained domain package:
+A cartridge is a self-contained domain package: YAML manifest, markdown agent prompts, JSON schemas for typed contracts, and deterministic validators that enforce trade-specific rules. The LLM fills structured slots. Validators enforce regulations in code. The result is a diagnosis, work plan, or quote with compliance baked in.
 
-```
-cartridges/trade-electricista/
-  cartridge.yaml            manifest + flows
-  agents/*.md               LLM prompts (diagnosis, quoting)
-  schemas/*.schema.json     typed contracts between agents
-  validators/*.py           deterministic rules (IEC 60364)
-  data/*.json               local material prices (Uruguay)
-```
-
-The LLM fills structured slots. Validators enforce trade-specific rules in code. The result is a diagnosis, work plan, or quote with regulatory compliance baked in.
+Two inference modes:
+- **Cloud** (Gemini) — default, higher quality.
+- **Local** (Wllama/LiteRT) — on-device, no internet required.
 
 ## Architecture
 
