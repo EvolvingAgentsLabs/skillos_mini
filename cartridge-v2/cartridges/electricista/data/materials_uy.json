@@ -1,0 +1,128 @@
+[
+  {
+    "id": "cable_pvc_1.5mm_genrod",
+    "name": "Cable PVC 1.5 mm² unipolar Genrod",
+    "unit": "m",
+    "unit_price": 22,
+    "currency": "UYU",
+    "brand": "Genrod",
+    "category": "cable"
+  },
+  {
+    "id": "cable_pvc_2.5mm_genrod",
+    "name": "Cable PVC 2.5 mm² unipolar Genrod",
+    "unit": "m",
+    "unit_price": 32,
+    "currency": "UYU",
+    "brand": "Genrod",
+    "category": "cable"
+  },
+  {
+    "id": "cable_pvc_4mm_genrod",
+    "name": "Cable PVC 4 mm² unipolar Genrod",
+    "unit": "m",
+    "unit_price": 48,
+    "currency": "UYU",
+    "brand": "Genrod",
+    "category": "cable"
+  },
+  {
+    "id": "cable_pvc_6mm_genrod",
+    "name": "Cable PVC 6 mm² unipolar Genrod",
+    "unit": "m",
+    "unit_price": 70,
+    "currency": "UYU",
+    "brand": "Genrod",
+    "category": "cable"
+  },
+  {
+    "id": "cable_pvc_10mm_genrod",
+    "name": "Cable PVC 10 mm² unipolar Genrod",
+    "unit": "m",
+    "unit_price": 115,
+    "currency": "UYU",
+    "brand": "Genrod",
+    "category": "cable"
+  },
+  {
+    "id": "termico_1p_16a_sica",
+    "name": "Térmico 1P 16 A Sica",
+    "unit": "u",
+    "unit_price": 380,
+    "currency": "UYU",
+    "brand": "Sica",
+    "category": "breaker"
+  },
+  {
+    "id": "termico_1p_25a_sica",
+    "name": "Térmico 1P 25 A Sica",
+    "unit": "u",
+    "unit_price": 420,
+    "currency": "UYU",
+    "brand": "Sica",
+    "category": "breaker"
+  },
+  {
+    "id": "termico_1p_32a_sica",
+    "name": "Térmico 1P 32 A Sica",
+    "unit": "u",
+    "unit_price": 480,
+    "currency": "UYU",
+    "brand": "Sica",
+    "category": "breaker"
+  },
+  {
+    "id": "rcd_2p_25a_30ma_genrod",
+    "name": "Disyuntor diferencial 2P 25 A 30 mA Genrod",
+    "unit": "u",
+    "unit_price": 1850,
+    "currency": "UYU",
+    "brand": "Genrod",
+    "category": "rcd"
+  },
+  {
+    "id": "rcd_4p_40a_30ma_genrod",
+    "name": "Disyuntor diferencial 4P 40 A 30 mA Genrod",
+    "unit": "u",
+    "unit_price": 3200,
+    "currency": "UYU",
+    "brand": "Genrod",
+    "category": "rcd"
+  },
+  {
+    "id": "toma_schuko_2p_t_roker",
+    "name": "Tomacorriente schuko 2P+T Roker",
+    "unit": "u",
+    "unit_price": 240,
+    "currency": "UYU",
+    "brand": "Roker",
+    "category": "outlet"
+  },
+  {
+    "id": "caja_embutir_universal_plastix",
+    "name": "Caja embutir universal Plastix",
+    "unit": "u",
+    "unit_price": 95,
+    "currency": "UYU",
+    "brand": "Plastix",
+    "category": "box"
+  },
+  {
+    "id": "borne_empalme_wago_3via",
+    "name": "Borne empalme Wago 3 vías",
+    "unit": "u",
+    "unit_price": 85,
+    "currency": "UYU",
+    "brand": "Wago",
+    "category": "terminal"
+  },
+  {
+    "id": "cano_corrugado_25mm_plastix",
+    "name": "Caño corrugado 25mm Plastix (rollo 25 m)",
+    "unit": "m",
+    "unit_price": 38,
+    "currency": "UYU",
+    "brand": "Plastix",
+    "category": "conduit"
+  }
+]

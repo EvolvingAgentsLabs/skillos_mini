@@ -210,6 +210,18 @@ Bottom half: live PDF preview. Bottom action bar: Share via WhatsApp / Email
 
 ## 6. The Three Cartridges (Concrete Specs)
 
+> **⚠ v1 POC — superseded.** This section describes the v1 (pipeline +
+> per-cartridge Python validators + JSON schemas) cartridge model. As of
+> 2026-04-29 the architecture forward is **Cartridge v2** (pure markdown +
+> shared TS tool library + define/use modes). See **§16** for v2 and
+> `cartridge-v2/` for the reference implementation.
+>
+> The v1 cartridges in `cartridges/` remain on disk and are still wired
+> into `mobile/` until the migration PR sequence completes
+> (`cartridge-v2/MIGRATION_PLAN.md`). Read this section as historical
+> reference; do not extend v1 cartridges with new code — author v2
+> equivalents instead.
+
 Each cartridge follows the existing pattern in
 `cartridges/residential-electrical/`:
 
@@ -521,6 +533,7 @@ These decisions are closed. Reopen only with new evidence:
 | Dataset pipeline = v1.2 | 2026-04 | Need usage volume + scrubber maturity before turning it on |
 | Apache 2.0 for runtime | inherited | OK for moat (the moat is in the cartridges + data, not the runtime) |
 | Cartridges potentially dual-licensed | 2026-04 | Open core for skeletons, AGPL+commercial for audited regulated cartridges (decision deferred until first commercial inquiry) |
+| **Cartridge v2 model authorized** | **2026-04-29** | **Pure-markdown cartridges + shared TS tool library + two modes (define on cloud big-model, use on-device small-model). v1 (pipeline + per-cartridge Python validators) is POC and supersedes upon mobile/ migration. The differentiator shifts from per-cartridge validators to a shared library audited once. New cartridges no longer require an engineer per trade. Reference implementation in `cartridge-v2/`. Migration plan in `cartridge-v2/MIGRATION_PLAN.md`. See §16.** |
 
 ## 14. Open Questions (need Matias' input before coding)
 
@@ -546,11 +559,134 @@ when a decision implements a rule from this guide
 strategy changes, update this file *first*, then the code. When code drifts
 from this file, the file wins by default — escalate if you disagree.
 
-**Future contributors**: read §1-§4 to understand *why*; read §6-§8 to know
-*what to do next*; read §12-§13 to know *what is already decided*.
+**Future contributors**: read §1-§4 to understand *why*; read §16 for the
+v2 cartridge model (the architecture forward); read §6-§8 for v1 historical
+context only; read §12-§13 to know *what is already decided*.
 
 ---
 
-*Last updated: 2026-04-25. Source-of-truth conversation: Matias Molinas
+## 16. Cartridge v2 (architecture forward)
+
+> **Status (2026-04-29)**: design + reference implementation in
+> `cartridge-v2/`. Mobile/ migration pending — see `cartridge-v2/MIGRATION_PLAN.md`.
+
+### 16.1 The pivot
+
+A v1 cartridge is a directory of code: `cartridge.yaml` manifest, agent
+prompts, JSON schemas, **per-cartridge Python validators** (`compliance_checker.py`,
+`repair_safety.py`), declarative flows. An engineer is required to ship one.
+
+A v2 cartridge is a **hierarchical tree of pure markdown**, plus optional
+`data/*.json` for bulk reference data. The cartridge encodes domain *knowledge*;
+the cartridge does **not** encode domain *rules*. Rules live in a single
+**shared TS tool library** (`cartridge-v2/tool-library/`) audited once and
+reused across every cartridge.
+
+A new cartridge can therefore be authored by a domain expert + a cloud LLM
+in one session ("define mode", `cartridge-v2/runtime/define-mode.md`) without
+an engineer; an on-device small model (Gemma 4 E2B target) walks it and calls
+library tools at runtime ("use mode", `cartridge-v2/runtime/use-mode.md`).
+
+The deterministic-validator moat doesn't disappear — it relocates from
+per-cartridge Python into a shared, generic, audit-once TS library. **Same
+moat, more leverageable.**
+
+### 16.2 Key v2 files (under `cartridge-v2/`)
+
+- `README.md` — full architecture
+- `runtime/define-mode.md` — cloud-LLM cartridge author spec
+- `runtime/use-mode.md` — on-device navigator + tool-caller spec
+- `tool-library/` — shared TS determinism layer:
+  - `electrical.ts` (ports v1 `compliance_checker.py` IEC 60364 rules)
+  - `plumbing.ts`, `painting.ts`, `safety.ts`, `units.ts`, `pricing.ts`,
+    `pdf.ts`, `share.ts` (stubs until mobile/ wiring), `types.ts`
+- `cartridges/electricista/` — canonical pure-markdown cartridge: MANIFEST +
+  index + diagnosis leaves + quote/build + report/compose + materials data
+- `cartridges/plomero/`, `cartridges/pintor/` — compact v2 cartridges
+- `MIGRATION_PLAN.md` — v1 → v2 migration sequence (multi-PR, do not collapse)
+
+### 16.3 Cross-project alignment (memory-as-cartridge)
+
+The v2 cartridge format is **the same shape that skillos / llmunix-dreamos /
+skillos_plugin already emit as long-term memory** (frontmatter + cross-links
++ confidence + trigger_goals). The same use-mode navigator walks both
+hand-authored trade cartridges and dream-engine memory cartridges. See
+`cartridge-v2/cross-project/` for cross-project manifest examples.
+
+This means the runtime is one engine; the cartridges are interchangeable —
+authored by a domain expert via define mode, OR generated by the dream engine
+from accumulated traces. Same shape, different sources.
+
+### 16.4 What §16 supersedes from earlier sections
+
+- **§4.1** ("Cartridge-driven everything") — the principle stays. The
+  *implementation* changes: v2 still puts trade-specific behavior in the
+  cartridge, but as pure markdown + tool calls, not Python validators.
+- **§6** ("The Three Cartridges (Concrete Specs)") — entirely v1. New work
+  goes to `cartridge-v2/cartridges/{electricista,plomero,pintor}/`.
+- **§7.1** (provider interfaces, week 2) — still applies to v1; v2 will
+  consume the same provider interfaces from its tool library implementations
+  during mobile/ wiring.
+- **§9.2** test coverage targets — v2 tool library tests are *additional* to
+  the existing 129 vitest baseline; cartridge-content tests for v2 are
+  walk-replay tests rather than per-cartridge fixture tests.
+- **§12** escalation triggers — **still binding**. The v2 pivot itself was
+  the escalation. Future bypasses still need authorization.
+- **§13** decision log — see new row "Cartridge v2 model authorized
+  (2026-04-29)".
+
+### 16.5 What §16 does NOT change
+
+- **§2** (strategic context) — the moat thesis is intact; v2 strengthens it.
+- **§3** (vertical decision: oficios, Android-only, no backend) — unchanged.
+- **§4.2** (schema-driven UI) — v2 uses MANIFEST.md frontmatter + cartridge
+  prose to drive UI; the principle is the same, the vehicle is different.
+- **§4.3** (provider-agnostic data layer) — v2 tool library implementations
+  call through the same provider interfaces.
+- **§4.4** (on-device first) — v2 *strengthens* this: define mode runs on
+  cloud, use mode runs on device; the architectural separation is now
+  explicit, not implicit.
+- **§9.3** (privacy invariants) — unchanged. v2 tool library has no
+  `network.*` tools in v1.0.
+- **§10** (dataset strategy v1.2) — unchanged. v2 nav traces feed the same
+  consent-gated pipeline.
+
+### 16.6 Migration sequence (high level)
+
+See `cartridge-v2/MIGRATION_PLAN.md` for the full PR-by-PR plan. Summary:
+
+1. **Build shared tool library to v1 parity** — port `compliance_checker.py`
+   and `repair_safety.py` rules to TS, with parity tests against v1 fixtures.
+2. **Author v2 trade cartridges** (electricista canonical; plomero/pintor
+   compact) — done in `cartridge-v2/cartridges/`.
+3. **Build v2 registry + runner in mobile/** — alongside (not replacing) v1
+   registry. Dual-load both. Adapter that exposes v2 cartridges as
+   v1-shaped CartridgeManifest for UI components during transition.
+4. **Make UI components dual-aware** — TradeBanner, HomeScreen, Onboarding,
+   TradeChip read from either v1 or v2 active-cartridge. Style tokens come
+   from MANIFEST locale/ui equivalent.
+5. **Dogfood v2 cartridges in production scenarios** with 3-5 testers
+   (M2 cohort). Verify parity for every v1 intervention scenario.
+6. **Switch default cartridge resolver to v2** behind a feature flag.
+   Promote to default when stable.
+7. **Archive v1**: move `cartridges/` → `cartridges-v1-archive/`. Drop v1
+   registry+runner code paths. Tag release.
+
+This is **multiple PRs** (estimated 6-10), not one. Squash-merging the
+sequence into one PR would couple the migration risk and is forbidden.
+
+### 16.7 Why v1 stays on disk during transition
+
+`mobile/src/lib/cartridge/registry.ts` hardcodes `cartridges/` as the scan
+root and `cartridge.yaml` as the manifest filename. 25+ Svelte components
+import `CartridgeManifest` (v1 shape). Until those are dual-aware,
+removing v1 cartridges from disk catastrophically breaks the build. The
+migration plan accommodates this; do not try to short-circuit it.
+
+---
+
+*Last updated: 2026-04-29. Source-of-truth conversation: Matias Molinas
 strategy session (Apr 2026), preserved in chat history under "skillos_mini
-trade-app vertical".*
+trade-app vertical". Cartridge v2 architecture added 2026-04-29 — see §16.*
+
+
