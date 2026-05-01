@@ -74,21 +74,35 @@ pantalla de **Diagnóstico**.
 
 Acá tenés tres formas de llenar la información:
 
-#### A. Auto-diagnóstico (si tenés un proveedor de IA configurado)
+#### A. Diagnóstico inteligente (Navigator + IA)
 
-Si tenés configurado un proveedor de LLM (Gemma 4 local en tu celular,
-o Gemini/OpenRouter en la nube), aparece el botón **"✨ Auto-diagnóstico"**.
+El botón **"✨ Auto-diagnóstico"** activa el Navigator — un sistema que
+combina verificaciones técnicas automáticas con la inteligencia de la IA:
 
-- Tap → la IA mira tus fotos → llena los textareas con un diagnóstico
-  en lenguaje técnico + una explicación al cliente en lenguaje llano.
-- La severidad (1 a 5) también se setea automáticamente.
+- **Verificaciones obligatorias**: la app ejecuta las reglas técnicas
+  correspondientes a tu oficio (sección de cable vs térmico, presencia
+  de diferencial, etc.). Estas corren siempre — no dependen de la IA.
+- **Verificaciones adaptivas**: la IA mira los resultados y decide si
+  hacer chequeos adicionales. Por ejemplo, si detecta cable
+  subdimensionado, puede verificar también si hay diferencial.
+- **Informe final**: la IA lee todos los resultados y compone un
+  diagnóstico en lenguaje técnico + explicación al cliente.
+
+Todo esto corre **en menos de 10 segundos** con Gemma 4 local.
+
 - **Vos editás el resultado** antes de seguir. La IA se equivoca a veces;
   vos sos el profesional matriculado.
+- La severidad (1 a 5) se setea según las verificaciones técnicas.
 
-> **Privacidad**: con Gemma 4 local, las fotos **nunca salen del
+> **Privacidad**: con Gemma 4 local, las fotos y datos **nunca salen del
 > celular**. Con Gemini/OpenRouter, las fotos viajan a esos
 > proveedores (encriptadas). Vos elegís cuál usar en **Ajustes →
 > Proveedor**.
+
+> **¿Por qué es más confiable que un chatbot?** Porque las reglas
+> técnicas (IEC 60364, normas de seguridad) están codificadas en la app
+> como funciones — no como texto en un prompt. La IA no puede
+> "olvidarse" de verificar la sección del cable. Eso corre siempre.
 
 #### B. Dictado por voz (recomendado en obra)
 
@@ -367,4 +381,56 @@ Cuando hayas hecho 3-5 trabajos con la app:
 Para autorizar tu propio cartridge (otro oficio: gasista, herrero,
 carpintero, jardinero, …) seguí
 [`TUTORIAL.md`](TUTORIAL.md).
+
+---
+
+## Cómo funciona por dentro (para curiosos)
+
+No necesitás saber esto para usar la app — pero si te interesa entender
+por qué funciona tan rápido y de forma tan confiable:
+
+### El Navigator
+
+Cuando tipeas un problema ("tengo un cable que se calienta"), pasa esto:
+
+1. **Ruteo**: la IA lee tu mensaje y elige cuál "documento de diagnóstico"
+   abrir. Es como si eligiera el capítulo correcto de un manual.
+
+2. **Verificaciones obligatorias**: la app ejecuta las reglas técnicas
+   que correspondan. Por ejemplo, si el documento dice "verificar sección
+   de cable", la app calcula automáticamente si 2.5mm² alcanza para un
+   térmico de 32A. Esto no usa IA — es una fórmula.
+
+3. **Verificaciones adaptivas**: la IA mira los resultados y decide si
+   profundizar. Si el cable falla, puede decidir verificar también si hay
+   diferencial. Pero solo puede usar las herramientas que el documento
+   le habilita — no inventa chequeos random.
+
+4. **Siguiente paso**: la IA decide si ir al presupuesto, pedir más datos,
+   o dar por terminado el diagnóstico.
+
+5. **Composición**: la IA toma todos los resultados técnicos y escribe
+   el informe final — un resumen técnico + explicación al cliente.
+
+### ¿Por qué funciona con un modelo chico en el celular?
+
+La IA (Gemma 4, 1.5GB en tu celular) hace **muy poco**:
+
+- Elige entre 2-5 opciones (una palabra)
+- Decide si llamar a una herramienta de una lista corta
+- Escribe 2-3 párrafos de resumen
+
+Todo lo demás (cálculos, reglas de seguridad, precios, formato del PDF)
+lo hace la app directamente, sin IA. Es como tener un asistente que solo
+necesita decir "sí verificá eso también" o "listo, pasemos al presupuesto".
+
+### ¿Qué NO puede hacer mal la IA?
+
+- **No puede saltear verificaciones obligatorias** — corren siempre.
+- **No puede inventar herramientas** — solo usa las de una lista aprobada.
+- **No puede generar reglas técnicas** — están escritas en código, no en prompts.
+- **No puede acceder a internet** — corre 100% en tu celular.
+
+Lo peor que puede pasar es que la IA elija mal el siguiente paso o escriba
+un resumen confuso — y para eso está el botón "Editar".
 

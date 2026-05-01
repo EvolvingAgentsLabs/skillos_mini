@@ -73,6 +73,8 @@ export interface CartridgeManifestV2 {
   locale: CartridgeLocale;
   confidence: number;
   navigation?: { max_hops?: number };
+  /** What the cartridge produces (e.g. "diagnosis", "quote", "report"). Used by COMPOSING phase. */
+  produces?: string;
   generated?: boolean;
   authored_by?: string;
   generated_at?: string;
@@ -116,6 +118,15 @@ export interface ToolCallBlock {
   lineNumber: number;
 }
 
+export interface AvailableToolsBlock {
+  /** Dotted tool names the LLM may call in this doc */
+  tools: string[];
+  /** Max LLM tool-call turns per doc visit (default 3) */
+  max_calls?: number;
+  /** Guidance for the LLM about when/why to call these tools */
+  purpose?: string;
+}
+
 export interface ParsedDoc {
   frontmatter: DocFrontmatter;
   /** Prose blocks (text between tool-call blocks, stripped of fences) */
@@ -124,6 +135,8 @@ export interface ParsedDoc {
   toolCalls: ToolCallBlock[];
   /** Referenced doc IDs from [text](#id) links */
   crossRefs: string[];
+  /** Optional whitelist of tools the LLM may invoke dynamically */
+  availableTools: AvailableToolsBlock | null;
 }
 
 // =============================================================================
@@ -186,6 +199,8 @@ export type NavigatorEvent =
   | { type: 'doc-enter'; docId: string; title: string }
   | { type: 'tool-call'; tool: string; args: Record<string, unknown> }
   | { type: 'tool-result'; tool: string; result: unknown }
+  | { type: 'llm-tool-call'; tool: string; args: Record<string, unknown> }
+  | { type: 'llm-tool-rejected'; tool: string; reason: string }
   | { type: 'ask-user'; key: string; prompt: string }
   | { type: 'llm-turn'; purpose: string; tokens?: number }
   | { type: 'nav-end'; terminationReason: TerminationReason; artifactUri?: string }
@@ -203,5 +218,7 @@ export type FileReaderFn = (relativePath: string) => Promise<string>;
 
 export interface NavigatorDeps {
   infer: InferenceFn;
+  /** Optional higher-budget inference for composing turns. Falls back to `infer`. */
+  inferLong?: InferenceFn;
   readFile: FileReaderFn;
 }

@@ -522,62 +522,133 @@ flowchart TB
 Total: **37 spec files, 278 cases.** New cases this milestone: **150+**
 (the trade-app vertical from scratch).
 
-## Cartridge v2 runtime (replacing v1)
+## Cartridge v2 runtime
 
-The v1 cartridge runtime (`src/lib/cartridge/`) used a linear agent pipeline
-with JSON schemas and ported Python validators. v2 replaces this with a
-pure-markdown tree navigator + shared TS tool library.
+The v2 cartridge runtime replaces v1's linear agent pipeline with a
+**document-tree navigator** + **shared TS tool library** + **hybrid LLM agency**.
 
 ```
-┌─────────────────────┐
-│   UI Layer (Svelte)  │  ← Unchanged screens (Home, Capture, Job, Quote, Library)
-├─────────────────────┤
-│   Navigator (TS)     │  ← State machine: loads cartridge, walks tree, executes tools
-├─────────────────────┤
-│   LLM (Gemma 4)     │  ← Only: pick links + synthesize prose (never generates tool-calls)
-├─────────────────────┤
-│  Tool Library (TS)   │  ← Deterministic: electrical, plumbing, painting, safety, pricing
-└─────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│ UI Layer (Svelte 5)   ← Unchanged screens               │
+├──────────────────────────────────────────────────────────┤
+│ Navigator (TS)        ← State machine: walk + hybrid     │
+├──────────────────────────────────────────────────────────┤
+│ LLM (Gemma 4 E2B)    ← Route, pick-next, tool-call, compose │
+├──────────────────────────────────────────────────────────┤
+│ Tool Library (TS)     ← Deterministic: electrical, safety, pricing │
+└──────────────────────────────────────────────────────────┘
 ```
 
-**Key design**: the LLM never generates tool calls. Tool-call blocks are
-pre-parsed from markdown documents and executed deterministically by the
-Navigator. The LLM only picks the next cross-ref link or declares "DONE".
+### Key design: hybrid tool-calling
+
+The Navigator combines **deterministic** and **adaptive** execution:
+
+1. **Mandatory tools** — `tool-call` blocks in markdown are pre-parsed and
+   executed without LLM involvement. These enforce regulations (IEC 60364
+   wire checks, RCD requirements, etc.).
+
+2. **Adaptive tools** — `available-tools` blocks declare a whitelist. After
+   mandatory tools run, the LLM sees the results and may invoke additional
+   tools from that whitelist. The document prose guides the LLM's decisions.
+
+3. **Composing** — after the walk completes, the LLM synthesizes a final
+   artifact (diagnosis, quote, report) from all accumulated tool results.
+
+This hybrid approach lets a 2B-4B model do useful reasoning (which checks
+to run, how to phrase the output) while all computation and compliance
+logic remains in deterministic TypeScript.
 
 ### Navigator state machine
 
 ```
-IDLE → LOADING (scan MANIFEST, verify tools)
-     → ROUTING (match user task to entry doc via LLM)
-     → WALKING (read doc, execute tool-calls, ask LLM for next link)
-     → COMPOSING (final artifact render)
-     → DONE
+IDLE → LOADING → ROUTING → WALKING → COMPOSING → DONE
+         │           │         │          │
+         │           │         │          └─ LLM synthesizes artifact
+         │           │         └─ Per doc:
+         │           │              1. Mandatory tool-calls (deterministic)
+         │           │              2. Hybrid tool loop (LLM + whitelist)
+         │           │              3. LLM picks next doc or DONE
+         │           └─ LLM matches user intent to entry doc
+         └─ Load MANIFEST, verify tools, build index
 ```
+
+### Per-document execution flow (WALKING phase)
+
+```
+┌─ Parse doc ──────────────────────────────────────────────┐
+│  md_walker → frontmatter + prose + tool-calls            │
+│              + available-tools + cross-refs               │
+├─ Execute mandatory tools ────────────────────────────────┤
+│  For each tool-call block:                               │
+│    arg_resolver resolves ${ctx.X} from blackboard        │
+│    tool_invoker dispatches to TS function                │
+│    Result → blackboard + walk log                        │
+├─ Hybrid tool loop (if available-tools declared) ─────────┤
+│  System: "You have these tools: [...]. Use <tool_call>." │
+│  Loop (max N turns):                                     │
+│    LLM response → parse for <tool_call> tags             │
+│    Whitelist check → registry check → execute            │
+│    Result → blackboard + context for next turn           │
+│    If LLM says DONE → exit loop                          │
+├─ Pick next ──────────────────────────────────────────────┤
+│  context_compactor builds prompt (budget: 3000 chars)    │
+│  LLM picks next cross-ref doc ID or says DONE            │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Guardrails (5 layers)
+
+| Layer | What | How |
+|-------|------|-----|
+| Manifest | `tools_required` + `tools_optional` | Cartridge-level tool declaration |
+| Doc whitelist | `available-tools` block per doc | LLM can only call listed tools |
+| Registry check | `registry.has(toolName)` | Prevents hallucinated tool names |
+| Call ceiling | `max_calls` (default 3) per doc | Prevents runaway loops |
+| Arg validation | Tool functions validate their own args | Type-level + runtime checks |
+
+### Why this works with Gemma 4 (2B-4B parameters)
+
+The Navigator minimizes what the LLM needs to do:
+
+| LLM task | Input | Output | Budget |
+|----------|-------|--------|--------|
+| Routing | User task + 3-5 route options | Single doc ID | ~20 tokens |
+| Pick next | Context summary + 2-5 options | Single doc ID or "DONE" | ~20 tokens |
+| Hybrid tool call | Results + tool list + doc prose | `<tool_call name="x">{args}</tool_call>` | ~50 tokens |
+| Composing | All results + blackboard | Spanish prose report | ~200 tokens |
+
+Context compaction (`context_compactor.ts`) keeps the prompt under 3000
+characters for navigation turns and 4000 for composing. This fits
+comfortably in Gemma 4's context window.
+
+The document prose acts as **in-context few-shot** — the LLM reads the
+markdown text (which explains the domain) and uses it to make better
+decisions about which tools to call and what to say.
 
 ### v2 module map (`src/lib/cartridge-v2/`)
 
 | Module | Responsibility |
 |--------|---------------|
-| `types.ts` | All type definitions (NavState, phases, events, blackboard) |
-| `md_walker.ts` | Parse .md → frontmatter + tool-call blocks + prose + cross-refs |
+| `types.ts` | NavState, phases, events, AvailableToolsBlock, blackboard types |
+| `md_walker.ts` | Parse .md → frontmatter + tool-calls + available-tools + prose + cross-refs |
 | `arg_resolver.ts` | Resolve `${ctx.X}` and `${tool_results.last.Y}` expressions |
 | `blackboard.ts` | Typed session KV store with source tracking |
 | `tool_invoker.ts` | Registry + dispatch for dotted tool names |
 | `frontmatter_index.ts` | Lightweight index of all cartridge docs |
 | `cartridge_loader.ts` | Loads MANIFEST.md, verifies tools, builds data accessor |
-| `navigator.ts` | State machine (the core) |
-| `context_compactor.ts` | Deterministic context window assembly for small LLMs |
+| `navigator.ts` | State machine + hybrid tool loop + composing |
+| `context_compactor.ts` | Context assembly for nav, hybrid, and composing turns |
 | `trace_emitter.ts` | Session trace serialization (YAML+md for dream consolidation) |
 | `ui_compat.ts` | Legacy CartridgeManifest shim for existing Svelte components |
-| `llm_adapter.ts` | Bridges LLMProvider → Navigator's InferenceFn |
+| `llm_adapter.ts` | Bridges LLMProvider → Navigator's InferenceFn (configurable token budget) |
 
 ### Tool library (`src/lib/tool-library/`)
 
-Shared deterministic tools used by all trade cartridges:
+Shared deterministic tools. The LLM never implements these — it only invokes them:
 
 | Module | Tools |
 |--------|-------|
-| `electrical.ts` | checkWireGauge, checkRCDRequired, maxLoadForSection, computeBreakerMargin, etc. |
+| `electrical.ts` | checkWireGauge, checkRCDRequired, maxLoadForSection, computeBreakerMargin |
 | `safety.ts` | classify, combineHazards |
 | `pricing.ts` | lineItemTotal, applyTax, formatQuote |
 | `units.ts` | formatCurrency |
@@ -589,27 +660,76 @@ Shared deterministic tools used by all trade cartridges:
 ### v2 cartridge format
 
 A v2 cartridge is a directory with:
-- `MANIFEST.md` — YAML frontmatter (id, tools_required, locale, navigation)
-- `*.md` docs — each with frontmatter + tool-call blocks + prose + cross-refs
+- `MANIFEST.md` — YAML frontmatter (id, tools_required, locale, navigation, produces)
+- `*.md` docs — each with frontmatter + tool-call blocks + available-tools + prose + cross-refs
 - `data/*.json` — local materials/prices
 
-Tool-call blocks are fenced code blocks:
+Three block types in document bodies:
 
 ````markdown
+# Mandatory tool-call (always executes, no LLM)
 ```tool-call
 tool: electrical.checkWireGauge
 args:
   breaker_amps: ${ctx.breaker_amps}
   wire_section_mm2: ${ctx.wire_section_mm2}
-  circuit_length_m: 10
 ```
+
+# Available tools (LLM may call these adaptively)
+```available-tools
+tools:
+  - electrical.checkCircuitBreaker
+  - safety.checkRCD
+max_calls: 3
+purpose: "Additional checks based on symptoms"
+```
+
+# Cross-refs (LLM picks which to visit next)
+[Presupuesto recableado](#presupuesto)
+[Sin RCD](#sin_rcd)
 ````
 
-### Migration status
+### Didactic example: complete walk
 
-v2 coexists with v1. The `run_navigator.ts` orchestrator parallels
-`run_project.ts`. UI components use `ui_compat.ts` for type compatibility.
-v1 files remain until all UI paths are verified on the v2 runtime.
+User says: "tengo un cable que se calienta mucho en la cocina"
+
+```
+1. LOADING
+   Navigator reads MANIFEST.md → cartridge "electricista"
+   Verifies tools: electrical.checkWireGauge ✓, safety.checkRCD ✓
+
+2. ROUTING
+   LLM sees routes: "cable problem → diagnosis", "no RCD → sin_rcd"
+   LLM picks: "diagnosis" (matches "cable se calienta")
+
+3. WALKING — doc: diagnosis.md
+   Mandatory: electrical.checkWireGauge(breaker=32, wire=2.5, length=12)
+     → Result: { verdict: "fail", reason: "2.5mm² insufficient for 32A" }
+
+   Available-tools: [electrical.checkCircuitBreaker, safety.checkRCD]
+   LLM sees the "fail" verdict + doc prose about additional checks
+   LLM calls: <tool_call name="safety.checkRCD">{"has_rcd": "false"}</tool_call>
+     → Result: { verdict: "fail", reason: "No RCD installed" }
+   LLM says: DONE
+
+   Cross-refs: [#presupuesto]
+   LLM picks: "presupuesto"
+
+4. WALKING — doc: presupuesto.md
+   Mandatory: pricing.lineItemTotal(cable_4mm2, 12m, ...)
+     → Result: { subtotal: 3200, tax: 704, total: 3904 }
+   No available-tools, no cross-refs → terminal
+
+5. COMPOSING
+   LLM receives: all tool results + blackboard + walk log
+   LLM produces: "DIAGNÓSTICO: Cable 2.5mm² alimentando térmico 32A en
+   cocina — subdimensionado (IEC 60364-5-52). Sin diferencial. PROPUESTA:
+   Recableado con 4mm² + instalación RCD 30mA. Total: $3904 + IVA."
+
+6. DONE
+   Artifact stored on blackboard as _artifact
+   UI renders the diagnosis to the user
+```
 
 ---
 

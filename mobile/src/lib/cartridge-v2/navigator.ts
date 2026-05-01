@@ -8,13 +8,15 @@
  *   1. Loads the cartridge (MANIFEST + index + tool verification)
  *   2. Routes user task to an entry document (via LLM)
  *   3. Walks the document tree:
- *      a. Parse doc → extract tool-calls + prose + cross-refs
- *      b. Resolve args → invoke tools deterministically
- *      c. Ask LLM to pick next cross-ref (or declare done)
- *   4. Composes final artifact (if cartridge specifies one)
+ *      a. Parse doc → extract tool-calls + available-tools + prose + cross-refs
+ *      b. Resolve args → invoke mandatory tools deterministically
+ *      c. If available-tools declared: LLM may invoke additional tools (hybrid loop)
+ *      d. Ask LLM to pick next cross-ref (or declare done)
+ *   4. Composes final artifact via LLM synthesis
  *
- * Key design: the LLM NEVER generates tool calls. All tool execution is
- * pre-parsed from markdown and executed deterministically by this module.
+ * Hybrid design: mandatory tool-calls execute deterministically from markdown.
+ * Documents may declare an available-tools whitelist — the LLM can then invoke
+ * those tools adaptively, guided by the document prose as guardrail.
  */
 
 import type {
@@ -28,13 +30,16 @@ import type {
   ToolResultEntry,
   WalkLogEntry,
   TerminationReason,
+  ParsedDoc,
+  AvailableToolsBlock,
 } from './types';
 import { parseDoc } from './md_walker';
 import { resolveArgs, type ResolverContext } from './arg_resolver';
 import { Blackboard } from './blackboard';
 import { invokeTool, type ToolRegistry } from './tool_invoker';
 import { loadCartridge, type CartridgeBundle } from './cartridge_loader';
-import { compactContext } from './context_compactor';
+import { compactContext, compactHybridContext, compactComposingContext } from './context_compactor';
+import { parseToolCalls, extractJsonObject } from '../llm/tool_parser';
 import type { ToolContext } from '../tool-library/types';
 
 // =============================================================================
@@ -132,7 +137,7 @@ export class Navigator {
       await this.phaseLoading();
       await this.phaseRouting();
       await this.phaseWalking();
-      // COMPOSING is optional — only if cartridge declares a final artifact
+      await this.phaseComposing();
       this.transition('done');
       this.emit({ type: 'nav-end', terminationReason: this.state.terminationReason ?? 'completed' });
     } catch (err) {
@@ -302,6 +307,12 @@ export class Navigator {
         }
       }
 
+      // Hybrid tool-calling: let LLM invoke additional tools if declared
+      if (doc.availableTools && doc.availableTools.tools.length > 0) {
+        const hybridResults = await this.hybridToolLoop(doc, docToolResults);
+        docToolResults.push(...hybridResults);
+      }
+
       // Record walk log
       const walkEntry: WalkLogEntry = {
         docId,
@@ -352,6 +363,146 @@ export class Navigator {
     if (this.state.hopCount >= this.state.maxHops && !this.state.terminationReason) {
       this.state.terminationReason = 'max_hops';
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase: COMPOSING
+  // ---------------------------------------------------------------------------
+
+  private async phaseComposing(): Promise<void> {
+    this.transition('composing');
+
+    const produces = this.state.manifest?.produces ?? 'informe';
+    const system = `Eres un asistente profesional de oficios. Con los datos de la sesión, compone un ${produces} final en español. Sé conciso y accionable. No inventes datos — usa solo los resultados de herramientas y el contexto proporcionado.`;
+
+    const user = compactComposingContext({
+      userTask: this.state.userTask,
+      toolResults: this.state.toolResults,
+      blackboard: this.blackboard,
+      walkLog: this.state.walkLog,
+    });
+
+    this.emit({ type: 'llm-turn', purpose: 'composing' });
+    const inferFn = this.deps.inferLong ?? this.deps.infer;
+    const artifact = await inferFn(system, user);
+
+    this.blackboard.set('_artifact', artifact, 'llm_inference', 'navigator.composing');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Hybrid Tool-Calling
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Let the LLM invoke tools from the doc's available-tools whitelist.
+   * Loops up to max_calls turns. Returns results from LLM-invoked tools.
+   */
+  private async hybridToolLoop(
+    doc: ParsedDoc,
+    mandatoryResults: ToolResultEntry[],
+  ): Promise<ToolResultEntry[]> {
+    const available = doc.availableTools!;
+    const maxTurns = available.max_calls ?? 3;
+    const whitelist = new Set(available.tools);
+    const hybridResults: ToolResultEntry[] = [];
+
+    const system = `Eres un asistente de oficios analizando un caso. Tienes acceso a herramientas adicionales. Llama una herramienta usando: <tool_call name="nombre.herramienta">{"arg": "valor"}</tool_call>. Puedes hacer múltiples llamadas. Cuando termines, responde solo DONE.`;
+
+    for (let turn = 0; turn < maxTurns; turn++) {
+      const user = compactHybridContext({
+        userTask: this.state.userTask,
+        currentProse: doc.prose,
+        mandatoryResults,
+        hybridResults,
+        availableTools: available,
+        blackboard: this.blackboard,
+      });
+
+      this.emit({ type: 'llm-turn', purpose: 'hybrid-tool-call' });
+      const response = await this.deps.infer(system, user);
+
+      // Check if LLM says done
+      const trimmed = response.trim();
+      if (trimmed === 'DONE' || trimmed === 'done' || trimmed.toUpperCase() === 'DONE') {
+        break;
+      }
+
+      // Parse tool calls from LLM response
+      const calls = parseToolCalls(response);
+      if (calls.length === 0) {
+        // No tool calls and no DONE — treat as implicit done
+        break;
+      }
+
+      // Execute each parsed tool call
+      for (const call of calls) {
+        const toolName = call.name;
+
+        // Whitelist enforcement
+        if (!whitelist.has(toolName)) {
+          this.emit({ type: 'llm-tool-rejected', tool: toolName, reason: 'not_in_whitelist' });
+          continue;
+        }
+
+        // Registry existence check
+        if (!this.config.registry.has(toolName)) {
+          this.emit({ type: 'llm-tool-rejected', tool: toolName, reason: 'not_in_registry' });
+          continue;
+        }
+
+        // Parse args
+        let args: Record<string, unknown>;
+        try {
+          const jsonStr = extractJsonObject(call.args);
+          args = JSON.parse(jsonStr);
+        } catch {
+          // Attempt lenient parse
+          try {
+            args = JSON.parse(call.args);
+          } catch {
+            args = {};
+          }
+        }
+
+        this.emit({ type: 'llm-tool-call', tool: toolName, args });
+
+        const toolCtx: ToolContext = {
+          cartridgeId: this.state.cartridgeId,
+          cartridgeVersion: this.state.manifest?.version ?? 2,
+          locale: this.state.manifest?.locale as any ?? {
+            region: 'UY', currency: 'UYU', language: 'es-UY',
+          },
+          cartridgeData: { read: () => { throw new Error('no data'); }, has: () => false },
+        };
+
+        const start = Date.now();
+        const invokeResult = invokeTool(this.config.registry, toolName, args, toolCtx);
+        const durationMs = Date.now() - start;
+
+        const entry: ToolResultEntry = {
+          tool: toolName,
+          args,
+          result: invokeResult.result ?? { error: invokeResult.error },
+          docId: this.state.currentDocId!,
+          timestamp: Date.now(),
+          durationMs,
+        };
+
+        hybridResults.push(entry);
+        this.state.toolResults.push(entry);
+        this.emit({ type: 'tool-result', tool: toolName, result: entry.result });
+
+        // Write to blackboard
+        if (invokeResult.ok && invokeResult.result && typeof invokeResult.result === 'object') {
+          this.blackboard.setFromToolResult(
+            invokeResult.result as Record<string, any>,
+            toolName,
+          );
+        }
+      }
+    }
+
+    return hybridResults;
   }
 
   // ---------------------------------------------------------------------------
