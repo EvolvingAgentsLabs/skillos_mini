@@ -522,6 +522,97 @@ flowchart TB
 Total: **37 spec files, 278 cases.** New cases this milestone: **150+**
 (the trade-app vertical from scratch).
 
+## Cartridge v2 runtime (replacing v1)
+
+The v1 cartridge runtime (`src/lib/cartridge/`) used a linear agent pipeline
+with JSON schemas and ported Python validators. v2 replaces this with a
+pure-markdown tree navigator + shared TS tool library.
+
+```
+┌─────────────────────┐
+│   UI Layer (Svelte)  │  ← Unchanged screens (Home, Capture, Job, Quote, Library)
+├─────────────────────┤
+│   Navigator (TS)     │  ← State machine: loads cartridge, walks tree, executes tools
+├─────────────────────┤
+│   LLM (Gemma 4)     │  ← Only: pick links + synthesize prose (never generates tool-calls)
+├─────────────────────┤
+│  Tool Library (TS)   │  ← Deterministic: electrical, plumbing, painting, safety, pricing
+└─────────────────────┘
+```
+
+**Key design**: the LLM never generates tool calls. Tool-call blocks are
+pre-parsed from markdown documents and executed deterministically by the
+Navigator. The LLM only picks the next cross-ref link or declares "DONE".
+
+### Navigator state machine
+
+```
+IDLE → LOADING (scan MANIFEST, verify tools)
+     → ROUTING (match user task to entry doc via LLM)
+     → WALKING (read doc, execute tool-calls, ask LLM for next link)
+     → COMPOSING (final artifact render)
+     → DONE
+```
+
+### v2 module map (`src/lib/cartridge-v2/`)
+
+| Module | Responsibility |
+|--------|---------------|
+| `types.ts` | All type definitions (NavState, phases, events, blackboard) |
+| `md_walker.ts` | Parse .md → frontmatter + tool-call blocks + prose + cross-refs |
+| `arg_resolver.ts` | Resolve `${ctx.X}` and `${tool_results.last.Y}` expressions |
+| `blackboard.ts` | Typed session KV store with source tracking |
+| `tool_invoker.ts` | Registry + dispatch for dotted tool names |
+| `frontmatter_index.ts` | Lightweight index of all cartridge docs |
+| `cartridge_loader.ts` | Loads MANIFEST.md, verifies tools, builds data accessor |
+| `navigator.ts` | State machine (the core) |
+| `context_compactor.ts` | Deterministic context window assembly for small LLMs |
+| `trace_emitter.ts` | Session trace serialization (YAML+md for dream consolidation) |
+| `ui_compat.ts` | Legacy CartridgeManifest shim for existing Svelte components |
+| `llm_adapter.ts` | Bridges LLMProvider → Navigator's InferenceFn |
+
+### Tool library (`src/lib/tool-library/`)
+
+Shared deterministic tools used by all trade cartridges:
+
+| Module | Tools |
+|--------|-------|
+| `electrical.ts` | checkWireGauge, checkRCDRequired, maxLoadForSection, computeBreakerMargin, etc. |
+| `safety.ts` | classify, combineHazards |
+| `pricing.ts` | lineItemTotal, applyTax, formatQuote |
+| `units.ts` | formatCurrency |
+| `plumbing.ts` | Plumbing diagnostics |
+| `painting.ts` | Surface area, paint coverage |
+| `pdf.ts` | renderQuote, renderReport |
+| `share.ts` | toWhatsApp |
+
+### v2 cartridge format
+
+A v2 cartridge is a directory with:
+- `MANIFEST.md` — YAML frontmatter (id, tools_required, locale, navigation)
+- `*.md` docs — each with frontmatter + tool-call blocks + prose + cross-refs
+- `data/*.json` — local materials/prices
+
+Tool-call blocks are fenced code blocks:
+
+````markdown
+```tool-call
+tool: electrical.checkWireGauge
+args:
+  breaker_amps: ${ctx.breaker_amps}
+  wire_section_mm2: ${ctx.wire_section_mm2}
+  circuit_length_m: 10
+```
+````
+
+### Migration status
+
+v2 coexists with v1. The `run_navigator.ts` orchestrator parallels
+`run_project.ts`. UI components use `ui_compat.ts` for type compatibility.
+v1 files remain until all UI paths are verified on the v2 runtime.
+
+---
+
 ## Decision log
 
 These are the architectural calls that shaped what's above. CLAUDE.md
