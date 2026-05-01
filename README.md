@@ -38,11 +38,18 @@ The goal router matches a cartridge automatically. Follow-up questions work with
 
 ## How it works
 
-A cartridge is a self-contained domain package: YAML manifest, markdown agent prompts, JSON schemas for typed contracts, and deterministic validators that enforce trade-specific rules. The LLM fills structured slots. Validators enforce regulations in code. The result is a diagnosis, work plan, or quote with compliance baked in.
+A **v2 cartridge** is a directory of markdown documents with embedded tool-call blocks. The Navigator walks the document tree, executes tools deterministically, and only asks the on-device LLM to pick the next link or synthesize prose. The LLM never generates tool calls — compliance rules live in a shared TypeScript tool library (`electrical.ts`, `safety.ts`, `pricing.ts`, etc.).
+
+```
+User task → Navigator loads MANIFEST.md → routes to entry doc
+  → walks docs (parse tool-calls, resolve args, invoke tools)
+  → LLM picks next cross-ref or says DONE
+  → outputs diagnosis/quote/report
+```
 
 Two inference modes:
-- **Cloud** (Gemini) — default, higher quality.
-- **Local** (Wllama/LiteRT) — on-device, no internet required.
+- **Local** (Gemma 4 E2B via LiteRT) — on-device, no internet required. Default.
+- **Cloud** (Gemini) — fallback for older devices.
 
 ## Architecture
 
