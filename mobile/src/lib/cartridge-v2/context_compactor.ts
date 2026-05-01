@@ -11,7 +11,7 @@
  * No LLM calls — pure string assembly with a character budget.
  */
 
-import type { WalkLogEntry, ToolResultEntry } from './types';
+import type { WalkLogEntry, ToolResultEntry, AvailableToolsBlock } from './types';
 import type { Blackboard } from './blackboard';
 
 // =============================================================================
@@ -102,6 +102,136 @@ export function compactContext(
     result = trimToBudget(sections, maxChars);
   }
 
+  return result;
+}
+
+// =============================================================================
+// Hybrid Tool-Calling Context
+// =============================================================================
+
+export interface HybridContextInput {
+  /** Original user task. */
+  userTask: string;
+  /** Prose from the current document. */
+  currentProse: string[];
+  /** Results from mandatory tool-calls already executed. */
+  mandatoryResults: ToolResultEntry[];
+  /** Results from previous LLM tool-call turns in this doc. */
+  hybridResults: ToolResultEntry[];
+  /** Available tools the LLM may call. */
+  availableTools: AvailableToolsBlock;
+  /** Session blackboard. */
+  blackboard: Blackboard;
+}
+
+/**
+ * Build the user-message for an LLM hybrid tool-calling turn.
+ * Includes: user task, doc prose, mandatory results, available tools list.
+ */
+export function compactHybridContext(
+  input: HybridContextInput,
+  config: CompactorConfig = {},
+): string {
+  const maxChars = config.maxChars ?? 3000;
+  const sections: string[] = [];
+
+  sections.push(`## Tarea\n${input.userTask}`);
+
+  if (input.currentProse.length > 0) {
+    const prose = input.currentProse.join('\n\n');
+    sections.push(`## Guía del documento\n${prose}`);
+  }
+
+  if (input.mandatoryResults.length > 0) {
+    const lines = input.mandatoryResults.map(tr => {
+      const verdict = (tr.result as any)?.verdict ?? 'info';
+      const reason = (tr.result as any)?.reason ?? JSON.stringify(tr.result);
+      return `- ${tr.tool}: ${verdict} — ${reason}`;
+    });
+    sections.push(`## Resultados obligatorios\n${lines.join('\n')}`);
+  }
+
+  if (input.hybridResults.length > 0) {
+    const lines = input.hybridResults.map(tr => {
+      const verdict = (tr.result as any)?.verdict ?? 'info';
+      const reason = (tr.result as any)?.reason ?? JSON.stringify(tr.result);
+      return `- ${tr.tool}: ${verdict} — ${reason}`;
+    });
+    sections.push(`## Resultados previos (tus llamadas)\n${lines.join('\n')}`);
+  }
+
+  const bbSummary = input.blackboard.summarizeWithBudget(300);
+  if (bbSummary !== '(empty)') {
+    sections.push(`## Contexto sesión\n${bbSummary}`);
+  }
+
+  const toolList = input.availableTools.tools.map(t => `- ${t}`).join('\n');
+  const purpose = input.availableTools.purpose
+    ? `\nPropósito: ${input.availableTools.purpose}`
+    : '';
+  sections.push(`## Herramientas disponibles${purpose}\n${toolList}`);
+
+  let result = sections.join('\n\n');
+  if (result.length > maxChars) {
+    result = trimToBudget(sections, maxChars);
+  }
+  return result;
+}
+
+// =============================================================================
+// Composing Context
+// =============================================================================
+
+export interface ComposingContextInput {
+  /** Original user task. */
+  userTask: string;
+  /** ALL tool results from the entire walk. */
+  toolResults: ToolResultEntry[];
+  /** Session blackboard. */
+  blackboard: Blackboard;
+  /** Walk log of visited docs. */
+  walkLog: WalkLogEntry[];
+}
+
+/**
+ * Build the user-message for the COMPOSING phase.
+ * Higher budget (4000 chars) since this is the final synthesis turn.
+ */
+export function compactComposingContext(
+  input: ComposingContextInput,
+  config: CompactorConfig = {},
+): string {
+  const maxChars = config.maxChars ?? 4000;
+  const sections: string[] = [];
+
+  sections.push(`## Tarea del usuario\n${input.userTask}`);
+
+  // Group tool results by doc
+  if (input.toolResults.length > 0) {
+    const lines = input.toolResults.map(tr => {
+      const verdict = (tr.result as any)?.verdict ?? 'info';
+      const reason = (tr.result as any)?.reason ?? JSON.stringify(tr.result);
+      return `- [${tr.docId}] ${tr.tool}: ${verdict} — ${reason}`;
+    });
+    sections.push(`## Resultados herramientas\n${lines.join('\n')}`);
+  }
+
+  const bbSummary = input.blackboard.summarizeWithBudget(600);
+  if (bbSummary !== '(empty)') {
+    sections.push(`## Datos sesión\n${bbSummary}`);
+  }
+
+  if (input.walkLog.length > 0) {
+    const history = input.walkLog
+      .map(e => `- ${e.title}: ${e.summary}`)
+      .join('\n');
+    sections.push(`## Recorrido\n${history}`);
+  }
+
+  let result = sections.join('\n\n');
+  if (result.length > maxChars) {
+    result = trimToBudget(sections, maxChars);
+  }
   return result;
 }
 

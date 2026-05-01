@@ -11,7 +11,7 @@
  */
 
 import yaml from 'js-yaml';
-import type { DocFrontmatter, ToolCallBlock, ParsedDoc } from './types';
+import type { DocFrontmatter, ToolCallBlock, ParsedDoc, AvailableToolsBlock } from './types';
 
 // =============================================================================
 // Public API
@@ -43,7 +43,7 @@ export function parseFrontmatter(content: string): DocFrontmatter {
 }
 
 /**
- * Full parse of a markdown document — frontmatter + prose + tool-calls + cross-refs.
+ * Full parse of a markdown document — frontmatter + prose + tool-calls + cross-refs + available-tools.
  */
 export function parseDoc(content: string): ParsedDoc {
   const frontmatter = parseFrontmatter(content);
@@ -51,8 +51,9 @@ export function parseDoc(content: string): ParsedDoc {
   const toolCalls = extractToolCalls(body);
   const crossRefs = extractCrossRefs(body);
   const prose = extractProse(body);
+  const availableTools = extractAvailableTools(body);
 
-  return { frontmatter, prose, toolCalls, crossRefs };
+  return { frontmatter, prose, toolCalls, crossRefs, availableTools };
 }
 
 /**
@@ -102,6 +103,39 @@ export function extractCrossRefs(body: string): string[] {
   }
 
   return [...new Set(refs)]; // deduplicate
+}
+
+/**
+ * Extract an available-tools block from the document body.
+ * Declares the tools the LLM may invoke dynamically during this doc's execution.
+ *
+ * Syntax in markdown:
+ * ```available-tools
+ * tools:
+ *   - electrical.checkCircuitBreaker
+ *   - safety.checkRCD
+ * max_calls: 3
+ * purpose: "Run additional checks based on user symptoms"
+ * ```
+ */
+export function extractAvailableTools(body: string): AvailableToolsBlock | null {
+  const regex = /```available-tools\n([\s\S]*?)```/;
+  const match = regex.exec(body);
+  if (!match) return null;
+
+  try {
+    const parsed = yaml.load(match[1].trim()) as Record<string, unknown>;
+    const tools = parsed.tools;
+    if (!Array.isArray(tools) || tools.length === 0) return null;
+
+    return {
+      tools: tools.map(String),
+      max_calls: typeof parsed.max_calls === 'number' ? parsed.max_calls : undefined,
+      purpose: typeof parsed.purpose === 'string' ? parsed.purpose : undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 // =============================================================================

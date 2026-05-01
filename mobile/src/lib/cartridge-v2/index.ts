@@ -10,6 +10,7 @@ export type {
   DocFrontmatter,
   ToolCallBlock,
   ParsedDoc,
+  AvailableToolsBlock,
   ToolResultEntry,
   WalkLogEntry,
   BlackboardValue,
@@ -24,7 +25,7 @@ export type {
 } from './types';
 
 // Foundation
-export { parseDoc, parseFrontmatter, extractToolCalls, extractCrossRefs } from './md_walker';
+export { parseDoc, parseFrontmatter, extractToolCalls, extractCrossRefs, extractAvailableTools } from './md_walker';
 export { resolveArgs, resolveExpression } from './arg_resolver';
 export { Blackboard } from './blackboard';
 
@@ -39,8 +40,8 @@ export type { CartridgeBundle, LoadResult } from './cartridge_loader';
 // Navigator
 export { Navigator } from './navigator';
 export type { NavigatorConfig, EventListener } from './navigator';
-export { compactContext } from './context_compactor';
-export type { CompactorInput, CompactorConfig } from './context_compactor';
+export { compactContext, compactHybridContext, compactComposingContext } from './context_compactor';
+export type { CompactorInput, CompactorConfig, HybridContextInput, ComposingContextInput } from './context_compactor';
 export { extractTrace, serializeTrace } from './trace_emitter';
 export type { SessionTrace } from './trace_emitter';
 
@@ -50,3 +51,4 @@ export type { CartridgeManifest, CartridgeUI, CartridgeUIAction, RunEvent } from
 
 // LLM adapter
 export { wrapProviderAsInferenceFn } from './llm_adapter';
+export type { InferenceFnOptions } from './llm_adapter';

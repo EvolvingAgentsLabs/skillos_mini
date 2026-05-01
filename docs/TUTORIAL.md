@@ -1,671 +1,441 @@
-# Tutorial
+# Tutorial: Write a v2 Cartridge
 
-> 30-minute walkthrough. By the end you'll have a working `trade-gasista`
-> cartridge running in skillos_mini, complete with vision diagnosis,
-> deterministic safety validators, branded PDF output, and a place in the
-> Home screen's trade picker.
+> Build a complete trade cartridge in 20 minutes. By the end you'll have a
+> working `trade-gasista` cartridge that diagnoses gas installations, runs
+> safety checks, lets the LLM adaptively probe further, and produces a
+> client-facing report — all running on-device with Gemma 4.
 
-We'll model a **gasista** (gas-installation tradesperson) as our worked
-example. The same recipe applies to any vertical — herrero, carpintero,
-jardinero, mecánico, vet móvil, equipos médicos field service, anything
-that fits the "go onsite, photograph, diagnose, propose, execute,
-deliver a PDF" loop.
+We model a **gasista** (gas-installation tradesperson) as the worked
+example. The same recipe applies to any vertical: herrero, carpintero,
+jardinero, vet movil, field service — anything that fits the "go onsite,
+diagnose, propose, deliver" loop.
 
 ---
 
 ## Prerequisites
 
 ```bash
-# You should already have skillos_mini running locally.
 cd skillos_mini/mobile
 npm install
-npm test                 # confirm 278 / 278 passing
-npm run check            # confirm 0 errors
+npm test             # confirm 355 passing
+npx svelte-check     # confirm 0 errors
 ```
-
-Read the [`CLAUDE.md`](../CLAUDE.md) source-of-truth guide first
-(especially §4 architectural principles and §6 cartridge spec) — it
-defines the rules this tutorial respects.
 
 ---
 
-## Create the directory structure
+## 1. Create the cartridge directory
 
-Cartridges live under `cartridges/<name>/`. The runtime indexes them by
-listing every `cartridges/<name>/cartridge.yaml` file at boot.
+v2 cartridges live under `cartridge-v2/cartridges/<name>/`:
 
 ```bash
-cd skillos_mini
-mkdir -p cartridges/trade-gasista/{agents,flows,schemas,validators,data}
+mkdir -p cartridge-v2/cartridges/gasista
 ```
 
-The full layout we'll fill in:
+Layout we'll build:
 
 ```
-cartridges/trade-gasista/
-├── cartridge.yaml          # manifest with ui: + hooks:
-├── flows/
-│   └── intervention.flow.md
-├── agents/
-│   ├── vision-diagnoser.md
-│   ├── quote-builder.md
-│   └── report-composer.md
-├── schemas/                # copies of _shared/schemas + cartridge-specific
-│   └── *.schema.json
-├── validators/
-│   └── gas_safety.py
+cartridge-v2/cartridges/gasista/
+├── MANIFEST.md              # Entry point + metadata
+├── index.md                 # Intent router
+├── fuga_gas.md              # Diagnosis path: gas leak
+├── regulador_vencido.md     # Diagnosis path: expired regulator
+├── presupuesto.md           # Quote with pricing tools
 └── data/
-    ├── materials_uy.json
-    ├── labor_rates_uy.json
-    ├── problem_codes.md
-    └── gas_norms.md
+    └── materials_uy.json    # Local prices
 ```
 
 ---
 
-## Write the manifest
+## 2. Write MANIFEST.md
 
-This is the central declaration. It tells the runtime what flows exist,
-what the blackboard schema is, what validators run, and how the shell
-should brand itself when this cartridge is active.
-
-```yaml
-# cartridges/trade-gasista/cartridge.yaml
-name: trade-gasista
-description: >
-  Cartridge para gasistas matriculados en Uruguay. Inspección visual de
-  instalaciones, detección de fugas, presupuesto, reporte. Validador
-  deterministico aplica MIEM-DNETN (subset).
-
-category: trade
-tags: [trade, gasista, residential, on-device]
-
-entry_intents:
-  - gasista
-  - olor a gas
-  - revisar instalación de gas
-  - presupuesto gasista
-  - fuga de gas
-
-flows:
-  intervention:
-    - vision-diagnoser
-    - quote-builder
-    - report-composer
-  quote_only:
-    - vision-diagnoser
-    - quote-builder
-
-default_flow: intervention
-
-blackboard_schema:
-  photo_set:        photo_set.schema.json
-  diagnosis:        diagnosis.schema.json
-  work_plan:        work_plan.schema.json
-  quote:            quote.schema.json
-  execution_trace:  execution_trace.schema.json
-  client_report:    client_report.schema.json
-
-validators:
-  - gas_safety.py
-
-max_turns_per_agent: 3
-preferred_tier: local
-
-variables:
-  currency: UYU
-  tax_rate: 0.22
-  region: Uruguay
-  dialect: rioplatense
-  warranty_default: >
-    Garantía de 6 meses sobre la mano de obra y los repuestos colocados.
-    No cubre fallas en cañerías, artefactos o conexiones preexistentes
-    ajenas a la intervención documentada.
-  professional_disclaimer: >
-    Trabajo realizado por gasista matriculado MIEM-DNETN actuante. Esta
-    aplicación asiste con documentación; no sustituye juicio profesional
-    ni inspección oficial cuando corresponda.
-
-ui:
-  brand_color: "#EA580C"
-  accent_color: "#9A3412"
-  emoji: "🔥"
-  primary_action:
-    label: "Nuevo trabajo"
-    flow: intervention
-    icon: bolt
-  secondary_actions:
-    - label: "Sólo presupuestar"
-      flow: quote_only
-      icon: clipboard
-  library_default_mode: list
-
-hooks:
-  on_quote_generated:
-    - send_to_blackboard: client_message
-  on_job_closed:
-    - generate_report: true
-    - prompt_corpus_consent: false
-```
-
-### Anatomy
-
-- **`flows`** — named sequences of agents. `intervention` is the full
-  loop; `quote_only` skips execution + report.
-- **`blackboard_schema`** — every key the runtime might write, mapped to
-  a JSON Schema file in `schemas/`.
-- **`validators`** — list of `.py` filenames. The mobile runtime looks
-  them up in `validators_builtin.ts` (next step).
-- **`variables`** — substituted into agent prompts and PDF templates.
-- **`ui:` and `hooks:`** — the trade-shell config. `brand_color` drives
-  the banner, the emoji shows in the chip, `primary_action` is the big
-  CTA on Home.
-
----
-
-## Copy the shared schemas
-
-Until the runtime supports cross-cartridge schema refs, each cartridge
-ships its own copy. We copy from `_shared/schemas/`:
-
-```bash
-cp cartridges/_shared/schemas/*.schema.json cartridges/trade-gasista/schemas/
-```
-
-You don't need to author these — `_shared/` already covers
-`photo_set`, `diagnosis`, `work_plan`, `quote`, `execution_trace`,
-`client_report`, `client_message`. Cartridge-specific extra schemas can
-be added later if your flow produces something exotic (most don't).
-
----
-
-## Write the agent prompts
-
-Three agents drive the flow: vision-diagnoser, quote-builder,
-report-composer.
-
-### `agents/vision-diagnoser.md`
+The manifest declares the cartridge identity, required tools, and locale:
 
 ```markdown
 ---
-name: vision-diagnoser
-description: Diagnose a gas installation problem from photos.
-needs: [photo_set]
-produces: [diagnosis]
-produces_schema: diagnosis.schema.json
-produces_description: >
-  Diagnosis with severity 1-5, gas-specific problem_categories
-  (see data/problem_codes.md), hazards, and client_explanation.
-max_turns: 2
-tier: capable
+type: cartridge
+version: 2
+id: gasista
+title: Gasista
+language: es-UY
+description: Cartridge para gasistas. Inspección de instalaciones de gas, detección de fugas, presupuesto.
+entry_intents:
+  - gasista
+  - olor a gas
+  - revisar instalacion de gas
+  - fuga de gas
+  - regulador
+entry_index: index.md
+tools_required:
+  - safety.classify
+  - pricing.lineItemTotal
+  - pricing.applyTax
+tools_optional:
+  - safety.combineHazards
+locale:
+  region: UY
+  currency: UYU
+  language: es-UY
+navigation:
+  max_hops: 8
+produces: informe
+confidence: 0.85
 ---
 
-# Vision Diagnoser — Gasista
-
-Sos gasista matriculado MIEM-DNETN con 15+ años de experiencia
-residencial en Uruguay. Te llegaron 1 a 5 fotos de un problema de gas.
-
-## Lo que hacés
-
-1. Mirá cada foto. Identificá: tipo de instalación (calefón / cocina /
-   cañería / regulador / medidor), antigüedad aparente, signos visibles
-   de falla (corrosión, conexiones flojas, mangueras vencidas, falta de
-   ventilación, instalación clandestina).
-
-2. Asigná uno o más `problem_categories` desde `data/problem_codes.md`.
-
-3. **Severidad 1-5**: 1=cosmético / 5=peligro inmediato (riesgo de fuga
-   activa o intoxicación CO).
-
-4. `summary` técnico (1 párrafo).
-
-5. `client_explanation` llano (2-3 oraciones, sin jerga).
-
-6. Marcá CADA peligro visible en `hazards` aunque el cliente no lo
-   haya mencionado.
-
-## Lo que NO hacés
-
-- No proponés cómo arreglarlo (lo hace `quote-builder`).
-- No inventás detalles que no se ven.
-- No emitís JSON fuera del bloque `<produces>`.
-- Si hay fuga activa visible o sospecha de CO, severity = 5 y el primer
-  hazard es `requires_immediate_action: true`.
-
-## Output
-
-<produces>
-{
-  "diagnosis": {
-    "trade": "gasista",
-    "severity": 4,
-    "problem_categories": ["regulador_envejecido", "ventilacion_insuficiente"],
-    "summary": "Regulador de garrafa con corrosión visible y fecha de fabricación 2014. Ambiente de calefón sin rejilla de ventilación inferior obligatoria.",
-    "client_explanation": "El regulador de la garrafa está vencido — los reguladores se cambian cada 5 años y este es de 2014. Además el calefón está en un cuarto sin la rejilla de ventilación que la norma exige.",
-    "visual_evidence_refs": ["..."],
-    "hazards": [
-      { "kind": "fire", "description": "Regulador envejecido — riesgo de fuga.", "requires_immediate_action": false },
-      { "kind": "intoxicacion_co", "description": "Falta ventilación inferior en ambiente con calefón a gas.", "requires_immediate_action": true }
-    ],
-    "confidence": 0.78
-  }
-}
-</produces>
+Cartridge para gasistas matriculados MIEM-DNETN en Uruguay.
 ```
 
-> **Tip**: copy the structure from `cartridges/trade-electricista/agents/vision-diagnoser.md`
-> — same shape, just swap the trade vocabulary and reference table.
-
-### `agents/quote-builder.md` and `agents/report-composer.md`
-
-Same pattern. Copy from `_shared/agents/` and customize.
-
-For `quote-builder.md`, key trade-specific gates to mention:
-
-> Para steps que toquen cañería de gas: `safety_preconditions:
-> ["gas_main_closed", "leak_test_documented"]`. El validador
-> `gas_safety.py` rechaza el output si falta.
+**Key fields:**
+- `tools_required` — tools the Navigator verifies exist at load time
+- `tools_optional` — tools available but not mandatory
+- `entry_index` — the document that handles intent routing
+- `produces` — what the COMPOSING phase generates ("informe", "presupuesto", "diagnosis")
+- `locale` — passed to every tool as context (for currency formatting, etc.)
 
 ---
 
-## Write the deterministic validator
+## 3. Write the index router
 
-This is **the differentiator**. The agent prompt suggests; the validator
-enforces. Validators are `.py` (canonical, reviewable) + a TS port.
+`index.md` maps user intents to diagnosis documents:
 
-### Python source: `validators/gas_safety.py`
+```markdown
+---
+id: index
+title: Índice Gasista
+routes:
+  - intent: fuga de gas
+    next: fuga_gas
+  - intent: regulador vencido
+    next: regulador_vencido
+  - intent: olor a gas
+    next: fuga_gas
+  - intent: presupuesto
+    next: presupuesto
+---
 
-```python
-"""Gas-installation safety validator. Pure-Python source of truth.
+Bienvenido. ¿Cuál es el problema con la instalación de gas?
 
-Rules:
-  GS1  Steps that work on gas piping must list `gas_main_closed`.
-  GS2  Cooktop / hob / calefón work in enclosed rooms must include a
-       step verifying ventilation per MIEM-DNETN.
-  GS3  Any work_plan touching the meter or main line MUST set
-       `requires_matriculated_professional: true`.
-  GS4  Leak test must be documented before the trade closes the job
-       — execution_trace must contain a "prueba de fuga" note.
-"""
-
-from __future__ import annotations
-
-GAS_PIPING_KEYWORDS = ("cañeria", "caneria", "manguera", "regulador", "valvula")
-ENCLOSED_ROOMS = {"baño", "bano", "cocina_cerrada", "lavadero"}
-METER_KEYWORDS = ("medidor", "tronco principal", "regulador troncal")
-
-
-def _deaccent(s: str) -> str:
-    import unicodedata
-    return "".join(
-        c for c in unicodedata.normalize("NFD", s.lower())
-        if unicodedata.category(c) != "Mn"
-    )
-
-
-def validate(blackboard: dict) -> tuple[bool, str]:
-    wp_entry = blackboard.get("work_plan")
-    if not wp_entry:
-        return True, "skipped (no work_plan yet)"
-    wp = wp_entry.get("value", {})
-    steps = wp.get("steps") or []
-
-    problems = []
-
-    # GS1
-    for s in steps:
-        desc = _deaccent(s.get("description") or "")
-        preconds = set(s.get("safety_preconditions") or [])
-        if any(k in desc for k in GAS_PIPING_KEYWORDS):
-            if "gas_main_closed" not in preconds:
-                problems.append(f"{s.get('id','?')}: gas-piping step missing gas_main_closed precondition")
-
-    # GS3
-    needs_matric = any(
-        any(k in _deaccent(s.get("description") or "") for k in METER_KEYWORDS)
-        for s in steps
-    )
-    if needs_matric and not wp.get("requires_matriculated_professional"):
-        problems.append("work_plan touches meter/main line but requires_matriculated_professional is not true")
-
-    # GS4 — only enforced when execution_trace is present
-    et_entry = blackboard.get("execution_trace")
-    if et_entry:
-        actions = et_entry.get("value", {}).get("actions") or []
-        has_leak_test = any(
-            "prueba de fuga" in _deaccent(a.get("notes") or "")
-            for a in actions
-        )
-        if actions and not has_leak_test:
-            problems.append("execution_trace closes without documenting prueba de fuga")
-
-    if problems:
-        return False, "gas safety violations: " + "; ".join(problems)
-    return True, f"gas safety ok ({len(steps)} steps)"
+Opciones: [Fuga de gas](#fuga_gas) | [Regulador vencido](#regulador_vencido)
 ```
 
-### TS port in `mobile/src/lib/cartridge/validators_builtin.ts`
-
-The mobile runtime can't run `.py` directly. We add a TS twin keyed by
-the filename. Open `mobile/src/lib/cartridge/validators_builtin.ts` and
-add:
-
-```typescript
-// At the bottom, before the BUILTIN_VALIDATORS map:
-
-const GAS_PIPING_KEYWORDS = ["caneria", "manguera", "regulador", "valvula"];
-const METER_KEYWORDS = ["medidor", "tronco principal", "regulador troncal"];
-
-const gasSafety: BuiltinValidator = (bb) => {
-  const wpEntry = bb.work_plan;
-  if (!wpEntry) return { ok: true, message: "skipped (no work_plan yet)" };
-  const wp = isObject(wpEntry.value) ? wpEntry.value : {};
-  const steps = Array.isArray(wp.steps) ? (wp.steps as Record<string, unknown>[]) : [];
-
-  const problems: string[] = [];
-
-  // GS1
-  for (const s of steps) {
-    if (!isObject(s)) continue;
-    const desc = deaccent(String(s.description ?? ""));
-    const preconds = new Set(asStringArrayLite(s.safety_preconditions));
-    if (GAS_PIPING_KEYWORDS.some((k) => desc.includes(k))) {
-      if (!preconds.has("gas_main_closed")) {
-        problems.push(`${String(s.id ?? "?")}: gas-piping step missing gas_main_closed precondition`);
-      }
-    }
-  }
-
-  // GS3
-  const needsMatric = steps.some((s) =>
-    isObject(s) &&
-    METER_KEYWORDS.some((k) => deaccent(String(s.description ?? "")).includes(k)),
-  );
-  if (needsMatric && wp.requires_matriculated_professional !== true) {
-    problems.push("work_plan touches meter/main line but requires_matriculated_professional is not true");
-  }
-
-  // GS4
-  const etEntry = bb.execution_trace;
-  if (etEntry && isObject(etEntry.value)) {
-    const actions = Array.isArray(etEntry.value.actions) ? (etEntry.value.actions as Record<string, unknown>[]) : [];
-    const hasLeakTest = actions.some((a) =>
-      isObject(a) && deaccent(String(a.notes ?? "")).includes("prueba de fuga"),
-    );
-    if (actions.length > 0 && !hasLeakTest) {
-      problems.push("execution_trace closes without documenting prueba de fuga");
-    }
-  }
-
-  if (problems.length > 0) {
-    return { ok: false, message: "gas safety violations: " + problems.join("; ") };
-  }
-  return { ok: true, message: `gas safety ok (${steps.length} steps)` };
-};
-
-// Register in the BUILTIN_VALIDATORS map at the bottom of the file:
-//   "gas_safety.py": gasSafety,
-//   "gas_safety.ts": gasSafety,
-```
-
-The TS twin uses `deaccent`, `isObject`, and `asStringArrayLite` — all
-already exported helpers in `validators_builtin.ts`.
+The Navigator shows the `routes` list to the LLM. The LLM picks the best
+match for the user's natural-language input.
 
 ---
 
-## Write a test
+## 4. Write a diagnosis document with mandatory + adaptive tools
 
-Open `mobile/tests/trade_validators.spec.ts` (or create a new
-`gas_validator.spec.ts` — same pattern). Add **at least 3 pass + 3 fail
-cases** per CLAUDE.md §9.2:
+This is where the power of v2 shows. `fuga_gas.md`:
 
-```typescript
-import { describe, expect, it } from "vitest";
-import { BUILTIN_VALIDATORS } from "../src/lib/cartridge/validators_builtin";
-import type { BlackboardSnapshot } from "../src/lib/cartridge/types";
+```markdown
+---
+id: fuga_gas
+title: Diagnóstico Fuga de Gas
+produces: diagnosis
+next_candidates:
+  - presupuesto
+---
 
-function entry(value: unknown) {
-  return { value, schema_ref: "x.json", produced_by: "test", description: "", created_at: "2026-04-25T00:00:00Z" };
-}
+# Fuga de Gas
 
-describe("gas_safety validator", () => {
-  const v = BUILTIN_VALIDATORS["gas_safety.py"];
+Procedimiento de diagnóstico para fuga de gas domiciliaria.
 
-  it("skips without work_plan", () => {
-    expect(v({}).ok).toBe(true);
-  });
+## Verificación obligatoria
 
-  it("passes a clean piping job with gas_main_closed", () => {
-    const bb: BlackboardSnapshot = {
-      work_plan: entry({
-        steps: [
-          { id: "S1", description: "Reemplazar manguera del calefón", safety_preconditions: ["gas_main_closed"] },
-        ],
-        requires_matriculated_professional: true,
-      }),
-    };
-    expect(v(bb).ok).toBe(true);
-  });
+Clasificar el nivel de riesgo según los síntomas reportados.
 
-  it("passes meter work when matriculation declared", () => {
-    const bb: BlackboardSnapshot = {
-      work_plan: entry({
-        steps: [{ id: "S1", description: "Inspección del medidor de gas", safety_preconditions: ["gas_main_closed"] }],
-        requires_matriculated_professional: true,
-      }),
-    };
-    expect(v(bb).ok).toBe(true);
-  });
-
-  it("fails when piping step lacks gas_main_closed", () => {
-    const bb: BlackboardSnapshot = {
-      work_plan: entry({
-        steps: [{ id: "S1", description: "Cambio de cañería de la cocina" }],
-      }),
-    };
-    const r = v(bb);
-    expect(r.ok).toBe(false);
-    expect(r.message).toMatch(/gas_main_closed/);
-  });
-
-  it("fails meter work without requires_matriculated_professional", () => {
-    const bb: BlackboardSnapshot = {
-      work_plan: entry({
-        steps: [{ id: "S1", description: "Reemplazo del medidor", safety_preconditions: ["gas_main_closed"] }],
-        requires_matriculated_professional: false,
-      }),
-    };
-    expect(v(bb).ok).toBe(false);
-  });
-
-  it("fails when execution_trace closes without prueba de fuga", () => {
-    const bb: BlackboardSnapshot = {
-      work_plan: entry({
-        steps: [{ id: "S1", description: "Reemplazo de manguera", safety_preconditions: ["gas_main_closed"] }],
-      }),
-      execution_trace: entry({
-        actions: [
-          { step_ref: "S1", started_at: "2026-04-25T10:00:00Z", outcome: "completed", notes: "Manguera cambiada" },
-        ],
-      }),
-    };
-    const r = v(bb);
-    expect(r.ok).toBe(false);
-    expect(r.message).toMatch(/prueba de fuga/);
-  });
-});
+```tool-call
+tool: safety.classify
+args:
+  description: ${ctx.user_description}
+  trade: gasista
+  environment: ${ctx.environment | default(residential)}
 ```
 
-Run:
+## Verificaciones adicionales
 
-```bash
-cd mobile && npm test -- tests/trade_validators.spec.ts
-# → all green
+Según los síntomas y el resultado de la clasificación inicial,
+ejecutar verificaciones complementarias. Si hay olor persistente o
+el ambiente es cerrado, verificar ventilación. Si hay corrosión
+visible, verificar antigüedad del regulador.
+
+```available-tools
+tools:
+  - safety.combineHazards
+max_calls: 2
+purpose: "Combinar peligros detectados si la clasificación inicial indica riesgo alto"
 ```
+
+## Siguiente paso
+
+Si se confirma fuga o riesgo alto: [Presupuesto reparación](#presupuesto)
+```
+
+**How this works at runtime:**
+
+1. `safety.classify` runs deterministically with the user's description
+2. The LLM reads the prose ("Si hay olor persistente...") as guidance
+3. The LLM sees `available-tools` and decides whether to call `safety.combineHazards`
+4. The LLM picks `#presupuesto` as next step (or DONE if the case is simple)
+
+The prose is the **guardrail** — it tells the LLM *when* to use the adaptive
+tools, without requiring the LLM to implement the logic.
 
 ---
 
-## Add the local data files
+## 5. Write a quote document with pricing tools
 
-These files are the *cartridge's worldview*. They drive prompt
-substitution, materials lists, problem code vocabularies, regulatory
-references — none of it lives in the agent prompt itself.
+`presupuesto.md`:
 
-### `data/materials_uy.json`
+```markdown
+---
+id: presupuesto
+title: Presupuesto Reparación
+produces: quote
+---
+
+# Presupuesto
+
+Generar presupuesto basado en el diagnóstico realizado.
+
+```tool-call
+tool: pricing.lineItemTotal
+args:
+  items: ${ctx.repair_items | default(["regulador_standard"])}
+  currency: UYU
+  data_source: materials_uy
+```
+
+```tool-call
+tool: pricing.applyTax
+args:
+  subtotal: ${tool_results.last.subtotal}
+  tax_rate: 0.22
+```
+
+Presupuesto generado. El Navigator compondrá el informe final al cliente.
+```
+
+No cross-refs and no `available-tools` — this is a terminal document.
+After the tools run, the Navigator enters COMPOSING and synthesizes
+the final output using all accumulated results.
+
+---
+
+## 6. Add data files
+
+`data/materials_uy.json`:
 
 ```json
 {
-  "$comment": "Reference prices in UYU as of 2026-04. Validate with gasista advisor before production.",
   "currency": "UYU",
-  "updated_at": "2026-04-25",
+  "updated_at": "2026-05-01",
   "materials": [
-    { "sku": "REG-MOLA",  "brand": "Mola",     "name": "Regulador de baja presión 1.4 kg/h", "unit": "u",     "unit_price": 1850 },
-    { "sku": "MAN-FL-50", "brand": "Mola",     "name": "Manguera flexible inox 50cm",         "unit": "u",     "unit_price": 980 },
-    { "sku": "VAL-3/8",   "brand": "FV",       "name": "Llave de paso para gas 3/8\"",         "unit": "u",     "unit_price": 1450 },
-    { "sku": "CAL-EM",    "brand": "Eskabe",   "name": "Calefón mural 13 lts/min gas natural", "unit": "u",     "unit_price": 12500 },
-    { "sku": "DETEC-GAS", "brand": "Spectrum", "name": "Detector de gas con alarma 220V",      "unit": "u",     "unit_price": 3200 }
+    { "sku": "REG-MOLA", "name": "Regulador baja presión", "unit_price": 1850 },
+    { "sku": "MAN-FL-50", "name": "Manguera flexible inox 50cm", "unit_price": 980 },
+    { "sku": "DETEC-GAS", "name": "Detector de gas con alarma", "unit_price": 3200 }
   ]
 }
 ```
 
-### `data/labor_rates_uy.json`
-
-Same shape as electricista — `kind`, `description`, `hourly`. Different
-tiers (matriculado, ayudante, urgencia).
-
-### `data/problem_codes.md`
-
-The vocabulary the agent must use. Same format as
-`trade-electricista/data/problem_codes.md`. Include codes like
-`regulador_envejecido`, `manguera_vencida`, `ventilacion_insuficiente`,
-`fuga_activa`, `instalacion_clandestina`, `medidor_obsoleto`,
-`conexion_floja_gas`, etc.
-
-### `data/gas_norms.md`
-
-Reference — what does each rule actually map to in MIEM-DNETN?
+Tools like `pricing.lineItemTotal` can reference this file by ID.
 
 ---
 
-## Reseed and test in the dev server
+## 7. Register custom tools (if needed)
+
+If your cartridge needs domain-specific tools not in the shared library,
+add them to `mobile/src/lib/tool-library/`:
+
+```typescript
+// mobile/src/lib/tool-library/gas.ts
+import type { ToolContext, ToolResult } from './types';
+
+export function checkRegulatorAge(
+  args: Record<string, unknown>,
+  ctx: ToolContext
+): ToolResult {
+  const yearInstalled = Number(args.year_installed);
+  const maxAge = 5; // MIEM-DNETN: regulators expire after 5 years
+  const currentYear = new Date().getFullYear();
+  const age = currentYear - yearInstalled;
+
+  return {
+    verdict: age > maxAge ? 'fail' : 'pass',
+    reason: age > maxAge
+      ? `Regulador de ${yearInstalled} — ${age} años, máximo permitido ${maxAge}`
+      : `Regulador dentro de vida útil (${age} años)`,
+    ref: 'MIEM-DNETN Art. 23',
+    age,
+    max_age: maxAge,
+  };
+}
+```
+
+Register it in the tool registry when setting up the Navigator:
+
+```typescript
+import * as gas from '../tool-library/gas';
+registerModule(registry, 'gas', gas);
+```
+
+Then reference it in your cartridge documents:
+
+```markdown
+```tool-call
+tool: gas.checkRegulatorAge
+args:
+  year_installed: ${ctx.regulator_year}
+```
+```
+
+---
+
+## 8. Test your cartridge
+
+Write a test that walks the cartridge with a mock LLM:
+
+```typescript
+import { describe, expect, it } from 'vitest';
+import { Navigator } from '../src/lib/cartridge-v2/navigator';
+import { createToolRegistry, registerModule } from '../src/lib/cartridge-v2/tool_invoker';
+import * as safety from '../src/lib/tool-library/safety';
+import * as pricing from '../src/lib/tool-library/pricing';
+
+describe('gasista cartridge walk', () => {
+  it('routes fuga intent and produces diagnosis', async () => {
+    const registry = createToolRegistry();
+    registerModule(registry, 'safety', safety);
+    registerModule(registry, 'pricing', pricing);
+
+    const nav = new Navigator(
+      {
+        infer: async () => 'fuga_gas', // mock LLM always picks fuga
+        readFile: async (path) => { /* load from cartridge dir */ },
+      },
+      {
+        basePath: 'cartridge-v2/cartridges/gasista',
+        docPaths: ['index.md', 'fuga_gas.md', 'presupuesto.md'],
+        userTask: 'Hay olor a gas en la cocina',
+        registry,
+      }
+    );
+
+    const state = await nav.run();
+    expect(state.phase).toBe('done');
+    expect(state.toolResults.length).toBeGreaterThan(0);
+  });
+});
+```
+
+---
+
+## 9. Run and verify
 
 ```bash
 cd mobile
-npm run seed       # Walk cartridges/, build public/seed/manifest.json
-npm run dev        # Vite at localhost:5173
-```
-
-Open Chrome, hit `localhost:5173`. The Onboarding flow now offers
-**Gasista** in the trade picker (because your cartridge has `ui:`).
-
-- Pick Gasista → Home shows the orange banner with "🔥 Gasista" chip.
-- Tap "Nuevo trabajo" → camera opens.
-- Take 1-2 photos (browser will use Web file picker).
-- Continue → diagnosis textareas.
-- If you have a Gemini API key configured in Settings, tap
-  "✨ Auto-diagnóstico" — Gemini will return a JSON-shaped diagnosis
-  parsed by `runVisionDiagnoser`.
-- Generate report → PDF appears with your branding.
-- Share → browser download fallback (Web mode).
-
-If you have an Android device set up:
-
-```bash
-npx cap sync android
-npx cap open android
-# Build + run on device. WhatsApp share works for real now.
+npm test                  # all tests pass
+npx svelte-check          # 0 type errors
 ```
 
 ---
 
-## Validate the cartridge in the runtime
+## Cartridge design patterns
 
-Beyond your unit test for the validator, the runtime has integration
-hooks. The fastest end-to-end loop:
+### Pattern: Progressive diagnosis
 
-```bash
-cd mobile
-npm test -- tests/cartridge_ui_hooks.spec.ts
-npm test -- tests/registry.spec.ts
-npm run check
+Route → general check → LLM decides depth → specific checks → quote.
+
+```
+index.md → diagnosis_general.md (mandatory: classify)
+                                 (available: checkX, checkY, checkZ)
+         → presupuesto.md (mandatory: pricing)
 ```
 
-If `cartridge_ui_hooks` parses your `ui:` and `hooks:` blocks correctly,
-and `registry` lists your cartridge in the `loadAll` test, you're good.
+The LLM reads the first diagnosis result and decides whether deeper
+checks are needed. A 2B model can reliably make this decision because
+it only needs to output a tool name from a whitelist.
 
----
+### Pattern: Multi-path branching
 
-## Commit
+Different symptoms → different documents → different tools.
 
-```bash
-git add cartridges/trade-gasista \
-        mobile/src/lib/cartridge/validators_builtin.ts \
-        mobile/tests/trade_validators.spec.ts
-git commit -m "feat: trade-gasista cartridge — gas-installation safety validator + flow"
+```
+index.md ─┬→ fuga_gas.md (tools: gas-specific)
+           ├→ regulador_vencido.md (tools: age checks)
+           └→ ventilacion.md (tools: room-size checks)
 ```
 
-Per CLAUDE.md §8.1 every PR must:
+Each document has its own `available-tools` tailored to that scenario.
+The LLM only sees what's relevant.
 
-- ✅ pass `npm run check`
-- ✅ pass `npm test`
-- ✅ add tests for any new validator (≥6 fixtures)
-- ❌ not add new top-level `package.json` deps (you didn't — good)
+### Pattern: Mandatory guardrail + adaptive investigation
 
----
+The mandatory tool enforces compliance. The available tools let the
+LLM investigate further:
 
-## Cartridge data refresh
-
-Once you've published your cartridge, you can let users get updated
-material prices and brand catalogs **without releasing a new APK**.
-
-The cartridge declares a refresh URL in `cartridge.yaml`:
-
-```yaml
-data_refresh_url: https://your-org.github.io/skillos-cartridges/gasista/manifest.json
+```markdown
+# Mandatory: always check wire gauge (can't skip this)
+```tool-call
+tool: electrical.checkWireGauge
+args: ...
 ```
 
-The app, on startup with WiFi, fetches that manifest and updates any
-`data/*.json` files that have a newer `updated_at`. No backend, just
-GitHub Pages or Cloudflare Pages serving static JSON.
+# Adaptive: LLM decides what else to check
+```available-tools
+tools:
+  - electrical.checkCircuitBreaker
+  - electrical.checkGrounding
+  - safety.checkRCD
+purpose: "Run additional checks based on wire gauge result"
+```
+```
 
-> **Q2 of CLAUDE.md §14** is still open: the canonical URL convention
-> hasn't been locked. Watch that issue or check Settings → Cartridge
-> data once it lands.
+If the wire gauge passes, the LLM might say DONE. If it fails, the
+LLM investigates further. The document prose guides this decision.
+
+### Pattern: Terminal document with no tools
+
+Some documents are purely informational — the LLM reads them and
+synthesizes output during COMPOSING:
+
+```markdown
+---
+id: normas_referencia
+title: Normas aplicables
+---
+
+## Normas IEC aplicables
+
+- IEC 60364-5-52: Selección e instalación — cableado
+- IEC 61008: Dispositivos de corriente residual (RCD)
+- IEC 60898: Interruptores automáticos
+
+El presupuesto debe referenciar la norma correspondiente.
+```
+
+No tools, no available-tools. The Navigator visits this doc if the
+LLM picks it as next step — its prose gets included in the COMPOSING
+context.
 
 ---
 
-## What you've just built
+## Summary: what makes v2 cartridges powerful
 
-You added **a new trade vertical** to skillos_mini in under 30 minutes
-of typing, **without touching any of these things**:
-
-- The runtime (`mobile/src/lib/cartridge/`)
-- The trade-shell components (`HomeScreen`, `TradeFlowSheet`, `JobsList`)
-- The PDF pipeline (`mobile/src/lib/report/`)
-- The provider abstractions
-- The state stores
-- App routing or navigation
-
-That separation is the whole point. The next vertical (vet móvil,
-inspector de obra, auditoría energética, equipos médicos field service,
-…) lands the same way: write a cartridge, register a TS port for any
-domain validator, ship.
-
-CLAUDE.md §11.3 calls this **the "second-vertical readiness" test**.
-You just exercised it on the third vertical (after electricista,
-plomero, pintor) — the abstractions held up. If you find a place where
-they didn't, that's a runtime bug; open an issue.
+| Feature | How it works | Why it matters |
+|---------|-------------|----------------|
+| Deterministic compliance | `tool-call` blocks execute without LLM | Can't hallucinate away safety checks |
+| Adaptive investigation | `available-tools` whitelist + LLM | Model decides depth based on symptoms |
+| Document as knowledge | Prose → LLM context | 2B model gets domain expertise for free |
+| Document as guardrail | Prose tells LLM when to act | Model guided without fine-tuning |
+| Auditable | Every call logged with args + result | Full trace for regulatory compliance |
+| Offline | Gemma 4 on NPU, all tools in TypeScript | Zero network dependency |
+| Extensible | New vertical = new markdown directory | No runtime code changes needed |
 
 ---
 
-## Where to go next
+## Reference
 
-- [`USAGE.md`](USAGE.md) — what the end-user (the gasista) sees once
-  this ships.
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — how the pieces wire together.
-- [`CLAUDE.md`](../CLAUDE.md) — the source-of-truth contract. Update it
-  if your cartridge needs an architectural change (e.g., a new shell
-  capability) — the rule is *update the doc first, then the code*.
-
-Welcome to the cartridge ecosystem.
-
+- [README.md](../README.md) — project overview
+- [ARCHITECTURE.md](ARCHITECTURE.md) — full system diagram + Navigator internals
+- [USAGE.md](USAGE.md) — end-user guide
+- [CLAUDE.md](../CLAUDE.md) — developer contract + source of truth
