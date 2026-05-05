@@ -65,16 +65,16 @@ If the **fallback** counter is high (>50% of tokens), the model's tokenizer does
 ## Test 5 — llm_os browser demos (upstream)
 
 ```bash
-cd c:/evolvingagents/llm_os/demo/tetris-browser
-python3 serve.py             # http://localhost:8888
+python c:/evolvingagents/llm_os/demo/tetris-browser/serve.py
+# → http://localhost:8888/demo/tetris-browser/
 ```
 
 ```bash
-cd c:/evolvingagents/llm_os/demo/scavenger-browser
-python3 serve.py             # http://localhost:8889
+python c:/evolvingagents/llm_os/demo/scavenger-browser/serve.py
+# → http://localhost:8889/demo/scavenger-browser/
 ```
 
-Same model, same kernel — these are the source-of-truth versions. The skillos_mini bundles (Test 2 + 3) should behave identically.
+Each `serve.py` self-locates the repo root and chdir's there before listening, so the demos' `../../kernel/...` and `../../cart/...` imports resolve. Same model, same kernel — these are the source-of-truth versions. The skillos_mini bundles (Test 2 + 3) should behave identically.
 
 ## Test 6 — skillos_robot cartridge adapter, demo mode
 
