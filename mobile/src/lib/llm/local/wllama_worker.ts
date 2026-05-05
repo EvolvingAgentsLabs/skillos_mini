@@ -22,14 +22,24 @@ type Inbound =
       temperature: number;
     }
   | { type: "cancel"; id: string }
-  | { type: "unload" };
+  | { type: "unload" }
+  // ── llm_os kernel Backend RPC (additive — see kernel/wllama_kernel_backend.ts) ──
+  | { type: "kernelTokenize";       id: string; text: string }
+  | { type: "kernelDetokenize";     id: string; tokens: number[] }
+  | { type: "kernelDecode";         id: string; tokens: number[]; opts?: object }
+  | { type: "kernelSamplingInit";   id: string; opts: { temp?: number; top_k?: number; top_p?: number } }
+  | { type: "kernelSamplingAccept"; id: string; tokens: number[] }
+  | { type: "kernelGetLogits";      id: string; idx: number }
+  | { type: "kernelKvClear";        id: string };
 
 type Outbound =
   | { type: "ready" }
   | { type: "loaded"; id: string }
   | { type: "error"; id?: string; message: string }
   | { type: "token"; id: string; delta: string }
-  | { type: "done"; id: string; text: string; finishReason: string };
+  | { type: "done"; id: string; text: string; finishReason: string }
+  | { type: "kernelResult"; id: string; result: unknown }
+  | { type: "kernelError"; id: string; message: string };
 
 import type { Wllama as WllamaClass } from "@wllama/wllama";
 
@@ -138,6 +148,49 @@ function post(msg: Outbound): void {
   (self as unknown as { postMessage(data: Outbound): void }).postMessage(msg);
 }
 
+// ── llm_os kernel Backend RPC handlers ─────────────────────────────
+// Thin pass-through to the loaded wllama instance. Each handler awaits
+// one wllama method and posts kernelResult (or kernelError on throw).
+// Shares the same wllama instance the chat flow uses — one loaded
+// model serves both paths.
+
+async function handleKernel(msg: Extract<Inbound, { type: `kernel${string}` }>): Promise<void> {
+  if (!wllama) {
+    post({ type: "kernelError", id: msg.id, message: "no model loaded" });
+    return;
+  }
+  try {
+    let result: unknown;
+    switch (msg.type) {
+      case "kernelTokenize":
+        result = await wllama.tokenize(msg.text, false);
+        break;
+      case "kernelDetokenize":
+        result = await wllama.detokenize(msg.tokens);
+        break;
+      case "kernelDecode":
+        result = await wllama.decode(msg.tokens, msg.opts ?? {});
+        break;
+      case "kernelSamplingInit":
+        result = await wllama.samplingInit(msg.opts);
+        break;
+      case "kernelSamplingAccept":
+        result = await wllama.samplingAccept(msg.tokens);
+        break;
+      case "kernelGetLogits":
+        result = await wllama.getLogits(msg.idx);
+        break;
+      case "kernelKvClear":
+        result = await wllama.kvClear();
+        break;
+    }
+    post({ type: "kernelResult", id: msg.id, result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    post({ type: "kernelError", id: msg.id, message });
+  }
+}
+
 self.addEventListener("message", (ev: MessageEvent<Inbound>) => {
   const msg = ev.data;
   if (!msg || typeof msg !== "object") return;
@@ -153,6 +206,15 @@ self.addEventListener("message", (ev: MessageEvent<Inbound>) => {
       break;
     case "unload":
       void handleUnload();
+      break;
+    case "kernelTokenize":
+    case "kernelDetokenize":
+    case "kernelDecode":
+    case "kernelSamplingInit":
+    case "kernelSamplingAccept":
+    case "kernelGetLogits":
+    case "kernelKvClear":
+      void handleKernel(msg);
       break;
   }
 });

@@ -1,6 +1,6 @@
 # Vendored from llm_os
 
-This directory is a snapshot of [`llm_os/kernel/`](https://github.com/EvolvingAgentsLabs/llm_os/tree/main/kernel) at commit `08aca1b` (branch `feat/kernel-extraction`).
+This directory is a snapshot of [`llm_os/kernel/`](https://github.com/EvolvingAgentsLabs/llm_os/tree/main/kernel) at commit `0f9a434` (sampler now backend-agnostic — accepts any object exposing the Backend interface, not just raw wllama).
 
 ## Why vendored, not npm
 
