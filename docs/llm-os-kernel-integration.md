@@ -1,6 +1,6 @@
 # Integrating the llm_os kernel into skillos_mini
 
-**Status:** design (May 2026). Kernel vendored at [`mobile/src/lib/kernel/`](../mobile/src/lib/kernel/) — not yet wired into [`runGoal`](../mobile/src/lib/llm/run_goal.ts).
+**Status:** in progress (May 2026). Kernel vendored at [`mobile/src/lib/kernel/`](../mobile/src/lib/kernel/). v2-manifest → kernel-manifest adapter landed in commit `ed0abcc` (PR 2). Not yet wired into [`runGoal`](../mobile/src/lib/llm/run_goal.ts) — that is PR 3, which needs the worker bridge work below.
 
 ## Why
 
@@ -13,15 +13,17 @@ Per CLAUDE.md §4.4 ("on-device first") and §9.3 (privacy invariants), this is 
 ## What's wired
 
 - [`mobile/src/lib/kernel/`](../mobile/src/lib/kernel/) — vendored snapshot of `llm_os/kernel/` (commit `08aca1b`). See [VENDORED.md](../mobile/src/lib/kernel/VENDORED.md) for refresh policy.
+- [`mobile/src/lib/kernel/v2_adapter.ts`](../mobile/src/lib/kernel/v2_adapter.ts) — **PR 2, landed**. Pure TS: takes a v2 cartridge's parsed manifest data + per-method JSON Schemas and produces a kernel-format manifest. Cross-products enum-constrained args to synthesize concrete opcode strings. Reports methods with non-enumerable required args as `skipped` so callers know which methods can use kernel-mode and which must fall back to the regex parser. Test at [`mobile/tests/v2_kernel_adapter.spec.ts`](../mobile/tests/v2_kernel_adapter.spec.ts).
 - [`cartridge-v2/cartridges/vision/`](../cartridge-v2/cartridges/vision/) — vision cartridge spec, status: `design`.
 
-## What's not wired (the actual integration work)
+## What's not wired (the actual integration work remaining)
 
-1. **Cartridge format adapter.** llm_os kernel reads JSON manifests (`{name, methods: {move: {opcodes: [...]}}}`). Skillos_mini cartridge v2 uses MANIFEST.md with YAML frontmatter (`{type, version, id, ...}`) and per-method `.md` files. Need a function `v2ManifestToKernelManifest(yamlFrontmatter, methodFiles)` that produces the JSON shape the kernel expects.
-   - Where: new file `mobile/src/lib/kernel/v2_adapter.ts` (TypeScript, takes parsed v2 cartridge, returns the JSON manifest).
-   - Hard part: enumerable opcodes. Most v2 cartridge methods don't list explicit opcode strings — they assume the LLM will format calls per the prompt-side convention. The adapter has to either (a) extract enumerable arg sets from JSON Schemas (where present) and synthesize opcode strings, or (b) accept that some methods are templated and need a different sampling path the kernel doesn't yet support.
+1. ~~**Cartridge format adapter.**~~ **DONE in PR 2** (commit `ed0abcc`). [`v2_adapter.ts`](../mobile/src/lib/kernel/v2_adapter.ts) does the translation. Methods with required non-enum args are reported as `skipped` — those need either schema tightening (add enums) or future kernel templated-opcode support.
 
-2. **wllama bridge.** The kernel's `Sampler` expects a `wllama` instance with `tokenize`, `detokenize`, `decode`, `samplingInit`, `samplingAccept`, `getLogits`, `kvClear`. Skillos_mini's [`wllama_backend.ts`](../mobile/src/lib/llm/local/wllama_backend.ts) wraps `@wllama/wllama` already; just need a thin adapter that surfaces the methods the kernel uses.
+2. **wllama bridge.** The kernel's `Sampler` expects a `wllama` instance with `tokenize`, `detokenize`, `decode`, `samplingInit`, `samplingAccept`, `getLogits`, `kvClear`. Skillos_mini's [`wllama_backend.ts`](../mobile/src/lib/llm/local/wllama_backend.ts) wraps `@wllama/wllama` inside a Web Worker (see [`wllama_worker.ts`](../mobile/src/lib/llm/local/wllama_worker.ts)) — methods are not directly callable from the main thread. The kernel sampler in turn doesn't know about workers. This is the actual blocker for PR 3:
+   - **Option A:** add a worker proxy that exposes `tokenize`/`decode`/`getLogits`/`samplingInit`/`samplingAccept`/`kvClear` over the existing worker message channel. Kernel sampler talks to the proxy as if it were wllama.
+   - **Option B:** refactor the kernel sampler upstream (`llm_os/kernel/sampler.js`) to take a backend-agnostic interface, then implement that interface for both raw wllama (browser demo) and worker-bridged wllama (skillos_mini).
+   - **Recommendation: B.** Keeps the kernel transport-agnostic and avoids a one-off bridge in skillos_mini. Lands as a future PR on `llm_os/kernel/`. Until then, PR 3 is gated.
 
 3. **`runGoal` rewrite path.** Currently `runGoal` does:
    ```
