@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillOS · LLM-OS validation demos</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0a0a0a; color: #e0e0e0; padding: 32px; max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 1.4em; color: #00ff88; margin-bottom: 8px; }
+  .subtitle { color: #666; font-size: 0.9em; margin-bottom: 24px; line-height: 1.5; }
+  .demo-card { display: block; padding: 18px; margin-bottom: 16px; border: 1px solid #333; border-radius: 6px; background: #111; text-decoration: none; color: inherit; transition: border-color 0.15s; }
+  .demo-card:hover { border-color: #00ff88; }
+  .demo-card h2 { font-size: 1.05em; color: #00ff88; margin-bottom: 6px; }
+  .demo-card p { font-size: 0.85em; color: #aaa; line-height: 1.5; }
+  .meta { font-size: 0.78em; color: #666; margin-top: 10px; }
+  .note { margin-top: 32px; padding: 14px; border-left: 2px solid #444; font-size: 0.82em; color: #888; line-height: 1.55; }
+  code { background: #1a1a1a; padding: 2px 5px; border-radius: 2px; color: #ddd; font-size: 0.92em; }
+</style>
+</head>
+<body>
+<h1>LLM-OS validation demos</h1>
+<div class="subtitle">
+  Two games running on the same kernel as <a href="https://github.com/EvolvingAgentsLabs/llm_os" style="color:#00aaff">llm_os</a>. Both download a 230 MB local model on first load, then play entirely in the browser via WebAssembly. Used for kernel validation: Tetris exercises a single-loop arcade pattern; Scavenger exercises a multi-step quest with the same compiled-state shape that <code>skillos_robot</code>'s SceneGraph emits.
+</div>
+
+<a class="demo-card" href="./tetris/">
+  <h2>▶ Tetris</h2>
+  <p>A 350M-parameter LLM plays Tetris using grammar-constrained ISA opcodes. Phase-controlled state machine: observe → moves → halt on game over.</p>
+  <div class="meta">cartridge: <code>game/tetris</code> · 4 methods · 5 enumerable move actions</div>
+</a>
+
+<a class="demo-card" href="./scavenger/">
+  <h2>▶ Scavenger</h2>
+  <p>A 350M-parameter LLM solves a multi-step quest. Find the red cube, pick it up, deliver to the blue square — through walls, around pits, with a 30-move budget. The compiled state shape mirrors <code>skillos_robot</code>'s SceneGraph: labeled objects with bearings and distances, ready for direct port to a real-world physical scavenger task.</p>
+  <div class="meta">cartridge: <code>game/scavenger</code> · 4 methods · 7 enumerable opcodes</div>
+</a>
+
+<div class="note">
+  <strong>Validation purpose.</strong> These demos prove the llm_os kernel runs unmodified inside skillos_mini's static-asset bundle, with two different cartridges, on the same model and the same wllama runtime the rest of the app uses. They are <em>not</em> production cartridges — production cartridges live in <code>cartridge-v2/cartridges/</code> and run through the v2 cartridge runner. Once kernel-mode lands in <code>runGoal</code> (skillos_mini PR 3), v2 cartridges will run on this same kernel via the <code>v2_adapter</code>.
+  <br><br>
+  <strong>Headers.</strong> SharedArrayBuffer requires <code>Cross-Origin-Opener-Policy: same-origin</code> + <code>Cross-Origin-Embedder-Policy: require-corp</code>. Vite's dev server includes a small plugin to send these (see <code>vite.config.ts</code>). The Capacitor production build includes them via the server config.
+</div>
+</body>
+</html>
