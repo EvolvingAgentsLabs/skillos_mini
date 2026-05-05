@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kernel-mode runner — multi-turn dispatch</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0a0a0a; color: #e0e0e0; padding: 24px; max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 1.4em; color: #00ff88; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 0.9em; margin-bottom: 20px; line-height: 1.5; }
+  .panel { background: #111; border: 1px solid #333; border-radius: 6px; padding: 16px; margin-bottom: 16px; }
+  .panel h3 { color: #00ff88; font-size: 0.95em; margin-bottom: 10px; }
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  button { background: #222; color: #e0e0e0; border: 1px solid #444; padding: 8px 16px;
+           border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 0.85em; }
+  button:hover { background: #333; border-color: #666; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary { background: #004422; border-color: #00ff88; color: #00ff88; }
+  select, input[type=text] { background: #222; color: #e0e0e0; border: 1px solid #444;
+                              padding: 8px 10px; border-radius: 4px; font-family: inherit; font-size: 0.85em; }
+  input[type=text] { min-width: 360px; }
+  .progress-bar { width: 320px; height: 8px; background: #222; border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #00ff88; transition: width 0.2s; }
+  .progress-text { font-size: 0.78em; color: #888; margin-top: 4px; }
+  #status { font-size: 0.85em; color: #888; margin-bottom: 8px; }
+  .trace { background: #0c0c0c; border: 1px solid #2a2a2a; border-radius: 4px; padding: 10px;
+           height: 360px; overflow-y: auto; font-size: 0.78em; line-height: 1.55; }
+  .trace .turn { color: #888; margin-top: 6px; font-weight: bold; }
+  .trace .opcode { color: #00aaff; }
+  .trace .result { color: #aaa; padding-left: 12px; }
+  .trace .halt { color: #00ff88; font-weight: bold; }
+  .trace .stalled, .trace .error { color: #ff4444; }
+  .trace .fallback { color: #ff8800; font-style: italic; }
+  .summary { font-size: 0.88em; color: #ccc; margin-top: 10px; padding: 10px; background: #0c1a0c; border-left: 2px solid #00ff88; border-radius: 0 4px 4px 0; }
+  .meta-info { font-size: 0.8em; color: #888; margin-top: 6px; }
+  code { background: #1a1a1a; padding: 2px 5px; border-radius: 2px; color: #ddd; font-size: 0.92em; }
+</style>
+</head>
+<body>
+
+<h1>Kernel-mode runner</h1>
+<div class="subtitle">
+  End-to-end test of the llm_os kernel running a multi-turn agentic loop on the same wllama runtime skillos_mini ships. Validates: <code>Cartridge.build()</code> → <code>Sampler.generate()</code> → <code>parseOpcode()</code> → tool dispatch → <code>formatResult()</code> → next turn. No regex parser, no JSON repair — grammar enforces correctness at sample time.
+</div>
+
+<div class="panel">
+  <h3>1. Load model</h3>
+  <div class="controls">
+    <span style="color:#888;font-size:0.85em">Model: LiquidAI LFM 2.5 350M (Q4_K_M, 229 MB) · loads from CDN, cached after first run</span>
+    <button id="btnLoad" class="primary">Load Model</button>
+  </div>
+  <div id="status">Idle.</div>
+  <div id="loadProgress" style="display:none">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-text" id="progressText"></div>
+  </div>
+</div>
+
+<div class="panel">
+  <h3>2. Pick cartridge + run a goal</h3>
+  <div class="controls">
+    <select id="cartridgeSelect">
+      <option value="echo">echo — say + ping (smallest test)</option>
+      <option value="tetris">tetris — observe + move set</option>
+    </select>
+    <input id="goalInput" type="text" value="Say hello once, then halt with status success." />
+    <button id="btnRun" disabled>Run</button>
+    <button id="btnAbort" disabled>Abort</button>
+  </div>
+  <div class="meta-info" id="cartMeta">No cartridge loaded yet.</div>
+</div>
+
+<div class="panel">
+  <h3>3. Live trace</h3>
+  <div class="trace" id="trace"></div>
+  <div class="summary" id="summary" style="display:none"></div>
+</div>
+
+<script type="module">
+import { Wllama } from 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2.4.0/esm/index.js';
+import { Cartridge } from '../_kernel/cartridge.js';
+// runner.ts is TS — for this static-asset demo we inline a small JS port
+// of runKernelLoop. The TS module at mobile/src/lib/kernel/runner.ts is
+// the source of truth; this inline copy stays in sync via the demo
+// refresh procedure.
+import { Sampler } from '../_kernel/sampler.js';
+import { parseOpcode, formatResult } from '../_kernel/dispatch.js';
+
+const WASM_BASE = 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2.4.0/esm';
+const CONFIG_PATHS = {
+  'single-thread/wllama.wasm': `${WASM_BASE}/single-thread/wllama.wasm`,
+  'multi-thread/wllama.wasm':  `${WASM_BASE}/multi-thread/wllama.wasm`,
+};
+const MODEL_REPO = 'LiquidAI/LFM2.5-350M-GGUF';
+const MODEL_FILE = 'LFM2.5-350M-Q4_K_M.gguf';
+const CHAT_TEMPLATE = (sys, user) =>
+  `<|startoftext|><|im_start|>system\n${sys}<|im_end|>\n<|im_start|>user\n${user}<|im_end|>\n<|im_start|>assistant\n`;
+
+const $ = id => document.getElementById(id);
+let wllama = null;
+let cartridge = null;
+let cartridgeName = null;
+let abortCtl = null;
+
+function setStatus(t) { $('status').textContent = t; }
+function appendTrace(cls, text) {
+  const el = $('trace');
+  const line = document.createElement('div');
+  line.className = cls;
+  line.textContent = text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearTrace() { $('trace').innerHTML = ''; $('summary').style.display = 'none'; }
+
+// ── Cartridge loaders ──────────────────────────────────────────────
+async function loadCartridge(name) {
+  const url = `../_cart/system/${name}/manifest.json`;
+  const fallbackUrl = `../_cart/game/${name}/manifest.json`;
+  let manifest;
+  try { manifest = await fetch(url).then(r => r.ok ? r.json() : Promise.reject()); }
+  catch { manifest = await fetch(fallbackUrl).then(r => r.json()); }
+  const c = new Cartridge(manifest);
+  await c.build(s => wllama.tokenize(s));
+  return c;
+}
+
+// ── Tool handlers per cartridge ────────────────────────────────────
+const TOOL_HANDLERS = {
+  echo: {
+    say: (args) => ({ ok: true, echoed: String(args.text ?? '') }),
+    ping: () => ({ ok: true, pong: Date.now() }),
+  },
+  tetris: {
+    // Tetris methods would normally drive a TetrisGame; here we just
+    // acknowledge — this demo is testing the kernel loop, not Tetris.
+    move:    (args) => ({ ok: true, action_recorded: args.action }),
+    observe: () => ({ ok: true, board: 'demo-stub' }),
+    reset:   () => ({ ok: true, reset: true }),
+  },
+};
+
+// ── Boot prompts per cartridge ─────────────────────────────────────
+const SYSTEM_PROMPTS = {
+  echo: `You are an LLM-OS kernel running the echo cartridge. Available methods:
+- echo.say {"text":"hello|world|ok"} — emit a greeting
+- echo.ping {} — liveness check
+
+Respond to the user's goal by emitting a single ISA opcode. When done, emit <|halt|>status=success.`,
+
+  tetris: `You are an LLM-OS kernel running the tetris cartridge. Available methods:
+- tetris.move {"action":"left|right|down|rotate|drop"}
+- tetris.observe {}
+- tetris.reset {}
+
+Respond to the user's goal with one ISA opcode at a time. When the task is done, emit <|halt|>status=success.`,
+};
+
+// ── runKernelLoop (inlined from src/lib/kernel/runner.ts) ──────────
+async function runKernelLoop(goal, { cartridge, backend, tools, systemPrompt, maxTurns = 6, signal }) {
+  const sampler = new Sampler(backend, cartridge.trie, { temp: 0.5 });
+  const basePrompt = CHAT_TEMPLATE(systemPrompt, goal);
+  let prompt = basePrompt;
+  let totalFallbacks = 0;
+  let totalTokens = 0;
+
+  for (let turn = 1; turn <= maxTurns; turn++) {
+    if (signal?.aborted) return { status: 'aborted', turns: turn - 1 };
+    appendTrace('turn', `── turn ${turn} ──`);
+    setStatus(`Turn ${turn} — generating...`);
+
+    const r = await sampler.generate(prompt, { maxTokens: 200 });
+    totalTokens += r.tokens.length;
+    if (r.fellBackSteps > 0) {
+      totalFallbacks += r.fellBackSteps;
+      appendTrace('fallback', `  [sampler used first-valid fallback ${r.fellBackSteps}/${r.tokens.length} steps]`);
+    }
+    if (r.stalled) {
+      appendTrace('stalled', `  [stalled — no valid next token]`);
+      return { status: 'stalled', turns: turn, totalFallbacks, totalTokens };
+    }
+    if (!r.text.trim()) {
+      appendTrace('error', `  [empty output]`);
+      return { status: 'error', turns: turn, totalFallbacks, totalTokens };
+    }
+
+    const op = parseOpcode(r.text);
+    if (op.type === 'halt') {
+      appendTrace('halt', `  <|halt|>status=${op.status}`);
+      return { status: op.status, turns: turn, totalFallbacks, totalTokens };
+    }
+    if (op.type === 'call') {
+      const argsStr = JSON.stringify(op.args);
+      appendTrace('opcode', `  <|call|>${op.cartridge}.${op.method} ${argsStr}<|/call|>`);
+      const handler = tools[op.method];
+      let toolResult;
+      if (!handler) toolResult = { error: `no handler for ${op.method}` };
+      else {
+        try { toolResult = await handler(op.args ?? {}); }
+        catch (e) { toolResult = { error: e.message }; }
+      }
+      const resultBlock = formatResult(toolResult);
+      appendTrace('result', `  <|result|>${JSON.stringify(toolResult)}<|/result|>`);
+      prompt += r.text + resultBlock;
+      if (prompt.length > 6000) {
+        prompt = basePrompt + r.text + resultBlock;
+        sampler.resetKv();
+      }
+      continue;
+    }
+    appendTrace('error', `  [unknown opcode shape: ${r.text.slice(0, 100)}]`);
+    return { status: 'error', turns: turn, totalFallbacks, totalTokens };
+  }
+  return { status: 'max-turns', turns: maxTurns, totalFallbacks, totalTokens };
+}
+
+// ── UI wiring ──────────────────────────────────────────────────────
+
+$('btnLoad').onclick = async () => {
+  $('btnLoad').disabled = true;
+  $('loadProgress').style.display = 'block';
+  if (!crossOriginIsolated) {
+    setStatus('Warning: not cross-origin isolated. Vite dev needs the COOP/COEP plugin.');
+  }
+  try {
+    setStatus('Initializing wllama...');
+    wllama = new Wllama(CONFIG_PATHS, { allowOffline: false });
+    setStatus(`Downloading ${MODEL_REPO}...`);
+    await wllama.loadModelFromHF(MODEL_REPO, MODEL_FILE, {
+      n_ctx: 4096, n_batch: 128,
+      progressCallback: ({ loaded, total }) => {
+        const pct = total > 0 ? Math.round(loaded / total * 100) : 0;
+        $('progressFill').style.width = pct + '%';
+        $('progressText').textContent = `${(loaded/1e6).toFixed(1)} / ${(total/1e6).toFixed(1)} MB (${pct}%)`;
+      },
+    });
+    $('loadProgress').style.display = 'none';
+    setStatus('Model loaded. Pick a cartridge + goal, then click Run.');
+    $('btnRun').disabled = false;
+    cartridgeName = $('cartridgeSelect').value;
+    cartridge = await loadCartridge(cartridgeName);
+    $('cartMeta').textContent = `Loaded ${cartridge.name}@${cartridge.version} — ${cartridge.trie.size()} opcodes`;
+  } catch (err) {
+    setStatus('Load failed: ' + err.message);
+    $('btnLoad').disabled = false;
+    console.error(err);
+  }
+};
+
+$('cartridgeSelect').onchange = async () => {
+  if (!wllama) return;
+  cartridgeName = $('cartridgeSelect').value;
+  setStatus(`Loading cartridge ${cartridgeName}...`);
+  cartridge = await loadCartridge(cartridgeName);
+  $('cartMeta').textContent = `Loaded ${cartridge.name}@${cartridge.version} — ${cartridge.trie.size()} opcodes`;
+  setStatus('Cartridge loaded.');
+};
+
+$('btnRun').onclick = async () => {
+  if (!wllama || !cartridge) return;
+  $('btnRun').disabled = true;
+  $('btnAbort').disabled = false;
+  clearTrace();
+  abortCtl = new AbortController();
+  const goal = $('goalInput').value.trim();
+  const t0 = performance.now();
+  try {
+    const result = await runKernelLoop(goal, {
+      cartridge,
+      backend: wllama,
+      tools: TOOL_HANDLERS[cartridgeName],
+      systemPrompt: SYSTEM_PROMPTS[cartridgeName],
+      maxTurns: 6,
+      signal: abortCtl.signal,
+    });
+    const dt = ((performance.now() - t0) / 1000).toFixed(1);
+    $('summary').style.display = 'block';
+    $('summary').innerHTML = `<strong>Done.</strong> status=<code>${result.status}</code> · turns=${result.turns} · tokens=${result.totalTokens} · fallback=${result.totalFallbacks} · ${dt}s`;
+    setStatus(`Run complete in ${dt}s.`);
+  } catch (err) {
+    appendTrace('error', `[fatal] ${err.message}`);
+    setStatus('Run failed: ' + err.message);
+  } finally {
+    $('btnRun').disabled = false;
+    $('btnAbort').disabled = true;
+    abortCtl = null;
+  }
+};
+
+$('btnAbort').onclick = () => { abortCtl?.abort(); };
+</script>
+</body>
+</html>

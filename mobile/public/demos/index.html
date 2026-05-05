@@ -36,6 +36,12 @@
   <div class="meta">cartridge: <code>game/scavenger</code> · 4 methods · 7 enumerable opcodes</div>
 </a>
 
+<a class="demo-card" href="./kernel-mode/">
+  <h2>▶ Kernel-mode runner (PR 3 validation)</h2>
+  <p>End-to-end test of the kernel running a generic multi-turn agentic loop — not tied to a specific game. Pick a cartridge (echo, tetris), enter a goal, and watch grammar-enforced ISA opcodes flow turn by turn. Stub tool handlers acknowledge each call; the kernel + sampler do the real work. This is the testbed for the runGoal kernel-mode integration.</p>
+  <div class="meta">module: <code>src/lib/kernel/runner.ts</code> · cartridges: <code>echo</code>, <code>tetris</code></div>
+</a>
+
 <div class="note">
   <strong>Validation purpose.</strong> These demos prove the llm_os kernel runs unmodified inside skillos_mini's static-asset bundle, with two different cartridges, on the same model and the same wllama runtime the rest of the app uses. They are <em>not</em> production cartridges — production cartridges live in <code>cartridge-v2/cartridges/</code> and run through the v2 cartridge runner. Once kernel-mode lands in <code>runGoal</code> (skillos_mini PR 3), v2 cartridges will run on this same kernel via the <code>v2_adapter</code>.
   <br><br>
