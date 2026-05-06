@@ -105,6 +105,34 @@
 import { Wllama } from 'https://cdn.jsdelivr.net/npm/@wllama/wllama@2.4.0/esm/index.js';
 import { Cartridge, Sampler, parseOpcode, formatResult } from '../_kernel/index.js';
 
+// ── Strategy injection ────────────────────────────────────────────
+// If the URL has ?strategy=<id>, fetch /strategies/tetris/<id>.md and
+// prepend its body (after the second `---`) to SYSTEM_PROMPT before
+// the model loads. Strategy markdown cartridges live at strategies/
+// in the repo root; copy-strategies.mjs vendors them into public/.
+
+async function loadStrategy(game) {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('strategy');
+  if (!id) return '';
+  try {
+    const res = await fetch(`/strategies/${game}/${id}.md`);
+    if (!res.ok) {
+      console.warn(`[strategy] /strategies/${game}/${id}.md → ${res.status}`);
+      return '';
+    }
+    const text = await res.text();
+    // Strip frontmatter: skip everything between the first `---` and the second `---`
+    const m = text.match(/^---[\s\S]*?\n---\s*\n([\s\S]*)$/);
+    const body = m ? m[1].trim() : text.trim();
+    console.log(`[strategy] loaded "${id}" — ${body.length} chars`);
+    return body;
+  } catch (e) {
+    console.warn(`[strategy] load failed:`, e);
+    return '';
+  }
+}
+
 // ── Tetris Game Engine (JS port of runtime/tetris.rs) ─────────────
 
 const COLS = 10, ROWS = 20;
@@ -355,6 +383,125 @@ function generateHint(state, analysis) {
   return 'stack flat center';
 }
 
+// ── Planner helpers ──────────────────────────────────────────────
+// The Program layer enumerates every legal final placement of the
+// current piece (4 rotations × COLS columns), simulates the post-
+// placement metrics, and ranks them by Dellacherie-style score. The
+// LLM doesn't plan — it ratifies the top-K suggestions.
+
+function _boardFromStrings(boardStrs) {
+  const board = Array.from({ length: ROWS }, () => new Uint8Array(COLS));
+  for (let r = 0; r < ROWS; r++) {
+    const row = boardStrs[r];
+    for (let c = 0; c < COLS; c++) {
+      board[r][c] = row[c] === '.' ? 0 : row.charCodeAt(c);
+    }
+  }
+  return board;
+}
+
+// Drop the piece (type, rot) anchored at column targetX onto a copy of
+// `board`. Returns {valid, board, lockedY, lines}. valid=false if the
+// piece can't be placed at this rotation+x at all.
+function _simulatePlacement(board, type, rot, targetX) {
+  const offs = OFFSETS[type][rot];
+  for (const [dx] of offs) {
+    const c = targetX + dx;
+    if (c < 0 || c >= COLS) return { valid: false };
+  }
+  let y = -2;
+  for (;;) {
+    const ny = y + 1;
+    const collides = offs.some(([dx, dy]) => {
+      const c = targetX + dx, r = ny + dy;
+      if (r >= ROWS) return true;
+      if (r < 0) return false;
+      if (c < 0 || c >= COLS) return true;
+      return board[r][c] !== 0;
+    });
+    if (collides) break;
+    y = ny;
+    if (y > ROWS) return { valid: false };
+  }
+  // Lock onto a fresh copy
+  const copy = board.map(row => new Uint8Array(row));
+  const ch = type.charCodeAt(0);
+  for (const [dx, dy] of offs) {
+    const c = targetX + dx, r = y + dy;
+    if (r < 0) return { valid: false }; // top-out
+    if (r < ROWS && c >= 0 && c < COLS) copy[r][c] = ch;
+  }
+  // Clear lines
+  const cleared = Array.from({ length: ROWS }, () => new Uint8Array(COLS));
+  let w = ROWS - 1, lines = 0;
+  for (let r = ROWS - 1; r >= 0; r--) {
+    if (copy[r].every(c => c !== 0)) { lines++; }
+    else { cleared[w] = copy[r]; if (w > 0) w--; }
+  }
+  return { valid: true, board: cleared, lockedY: y, lines };
+}
+
+// Dellacherie-inspired scalar — higher is better. Lines are paramount;
+// holes are heavily penalized; aggregate height and roughness mildly.
+function _scoreBoard(board, lines) {
+  const heights = Array(COLS).fill(0);
+  for (let c = 0; c < COLS; c++) {
+    for (let r = 0; r < ROWS; r++) {
+      if (board[r][c] !== 0) { heights[c] = ROWS - r; break; }
+    }
+  }
+  const aggregate = heights.reduce((a, b) => a + b, 0);
+  let holes = 0;
+  for (let c = 0; c < COLS; c++) {
+    let above = false;
+    for (let r = 0; r < ROWS; r++) {
+      if (board[r][c] !== 0) above = true;
+      else if (above) holes++;
+    }
+  }
+  let rough = 0;
+  for (let c = 0; c < COLS - 1; c++) rough += Math.abs(heights[c] - heights[c + 1]);
+  const maxH = Math.max(...heights);
+  const score = lines * 30 - aggregate * 0.5 - holes * 8 - rough * 0.5 - maxH * 0.3;
+  return { score, holes, rough, maxH, lines };
+}
+
+// Convert (currentX, currentRot) -> (targetX, targetRot) into an opcode
+// sequence the LLM can ratify and emit one-at-a-time.
+function _pathTo(curX, curRot, tgtX, tgtRot) {
+  const seq = [];
+  let r = curRot;
+  // Rotate clockwise — the engine only supports CW rotation.
+  while (r !== tgtRot) { seq.push('rotate'); r = (r + 1) % 4; }
+  let x = curX;
+  while (x < tgtX) { seq.push('right'); x++; }
+  while (x > tgtX) { seq.push('left'); x--; }
+  seq.push('drop');
+  return seq;
+}
+
+function bestActions(state, topK = 3) {
+  const board = _boardFromStrings(state.board);
+  const cur = state.current;
+  const candidates = [];
+  for (let rot = 0; rot < 4; rot++) {
+    for (let x = 0; x < COLS; x++) {
+      const sim = _simulatePlacement(board, cur.type, rot, x);
+      if (!sim.valid) continue;
+      const ev = _scoreBoard(sim.board, sim.lines);
+      candidates.push({
+        sequence: _pathTo(cur.x, cur.rotation, x, rot),
+        score: Math.round(ev.score * 10) / 10,
+        lines: ev.lines,
+        holes: ev.holes,
+        max_h: ev.maxH,
+      });
+    }
+  }
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates.slice(0, topK);
+}
+
 // The core Program Layer function: compiles raw state into decision-relevant tokens
 function compileResult(state, stepCount) {
   const a = analyzeBoard(state);
@@ -376,6 +523,9 @@ function compileResult(state, stepCount) {
     lines: state.lines,
     step: stepCount,
     hint: generateHint(state, a),
+    // Pre-computed top-K placements. The LLM picks one and emits its
+    // sequence one opcode at a time. Pure ratification, no planning.
+    best_actions: bestActions(state, 3),
   };
 
   // Add urgency flag for high piles
@@ -402,6 +552,7 @@ let cartridge = null;
 let sampler = null;
 
 const TETRIS_MANIFEST_URL = '../_cart/game/tetris/manifest.json';
+let EFFECTIVE_SYSTEM_PROMPT = null;  // populated by loadStrategy() at btnLoad
 
 // ── WASM config ──────────────────────────────────────────────────
 
@@ -439,17 +590,17 @@ Methods:
 - tetris.move {"action":"drop"}  -- hard drop piece to bottom
 
 After each move you receive a compiled state:
-- piece: current piece type (I/O/T/S/Z/J/L)
-- x: piece column (0-9), rot: rotation (0-3)
-- next: next piece type
-- pile: height of the highest column
-- holes: empty cells trapped under blocks (bad, minimize)
-- rough: surface roughness (lower=flatter=better)
-- profile: 10-digit column heights (e.g. "0000032100")
-- hint: suggested strategy
-- well: column with a deep gap to fill (if any)
+- piece, x, rot, next: current and upcoming piece info
+- pile, holes, rough, profile: surface metrics (lower is better, except lines)
+- hint: short natural-language guidance
+- best_actions: top 3 pre-computed placements ranked by score. Each entry has:
+    sequence: the opcode list to reach that placement (e.g. ["rotate","right","drop"])
+    score: higher is better
+    lines: lines that placement would clear
+    holes: holes after that placement
+    max_h: max column height after that placement
 
-Strategy: follow the hint. If hint says "drop" prefer drop. If "fill well at col N" move piece toward col N then drop. Keep pile low, minimize holes.`;
+Strategy: pick the FIRST entry in best_actions and emit its sequence one opcode at a time. The Program already enumerated every legal placement and ranked them — you just need to ratify by emitting opcodes in order. Don't second-guess best_actions[0]; the Program saw all 40 possibilities and you saw none of them.`;
 
 const USER_GOAL = `Play tetris. Stack pieces to clear lines. Follow hints. Keep pile low.`;
 
@@ -516,6 +667,13 @@ function setStatus(msg) { $('status').textContent = msg; }
 $('btnLoad').onclick = async () => {
   $('btnLoad').disabled = true;
 
+  // Pull the strategy markdown body and prepend it to SYSTEM_PROMPT
+  // before any model load. No-op if no ?strategy=<id> in the URL.
+  const stratBody = await loadStrategy('tetris');
+  EFFECTIVE_SYSTEM_PROMPT = stratBody
+    ? `${SYSTEM_PROMPT}\n\n--- Strategy override (loaded from /strategies/tetris/) ---\n${stratBody}`
+    : SYSTEM_PROMPT;
+
   $('progressWrap').style.display = 'block';
 
   if (!crossOriginIsolated) {
@@ -562,7 +720,7 @@ $('btnLoad').onclick = async () => {
     $('progressWrap').style.display = 'none';
     setStatus('Model loaded. Ready to play!');
 
-    prompt = CHAT_TEMPLATE(SYSTEM_PROMPT, USER_GOAL);
+    prompt = CHAT_TEMPLATE(EFFECTIVE_SYSTEM_PROMPT ?? SYSTEM_PROMPT, USER_GOAL);
     game.reset();
     stepCount = 0;
     renderBoard(game.state);
@@ -669,7 +827,7 @@ async function doStep() {
       prompt += output + resultBlock;
 
       // Sliding window: if prompt is too long, keep system+goal + last result only
-      const basePrompt = CHAT_TEMPLATE(SYSTEM_PROMPT, USER_GOAL);
+      const basePrompt = CHAT_TEMPLATE(EFFECTIVE_SYSTEM_PROMPT ?? SYSTEM_PROMPT, USER_GOAL);
       const promptLen = prompt.length;
       if (promptLen > 6000) {
         prompt = basePrompt + output + resultBlock;
@@ -722,7 +880,7 @@ $('btnReset').onclick = async () => {
   game.reset();
   stepCount = 0;
   if (sampler) await sampler.kvClear();
-  prompt = CHAT_TEMPLATE(SYSTEM_PROMPT, USER_GOAL);
+  prompt = CHAT_TEMPLATE(EFFECTIVE_SYSTEM_PROMPT ?? SYSTEM_PROMPT, USER_GOAL);
   $('trace').innerHTML = '';
   appendTrace('result', '--- Game reset ---');
   renderBoard(game.state);

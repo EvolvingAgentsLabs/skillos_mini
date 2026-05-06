@@ -1,0 +1,12 @@
+{
+  "tetris": [
+    { "id": "conservative", "name": "Conservative", "description": "Always pick the safest pre-ranked placement. Never improvise." },
+    { "id": "aggressive",   "name": "Aggressive",   "description": "Prioritise line clears over surface smoothness." },
+    { "id": "well-filler",  "name": "Well Filler",  "description": "Build flat on the left, keep column 9 as a Tetris well." }
+  ],
+  "scavenger": [
+    { "id": "cautious", "name": "Cautious", "description": "Always trust the BFS pathfinder. Never improvise direction." },
+    { "id": "direct",   "name": "Direct",   "description": "Trust the bearing field; deviate only when BFS strongly disagrees." },
+    { "id": "explorer", "name": "Explorer", "description": "Use free `look` between moves to refresh state." }
+  ]
+}

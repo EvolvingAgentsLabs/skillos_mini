@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SkillOS · LLM-OS validation demos</title>
+<title>skillos_mini · LLM-OS games</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0a0a0a; color: #e0e0e0; padding: 32px; max-width: 720px; margin: 0 auto; }
@@ -19,33 +19,27 @@
 </style>
 </head>
 <body>
-<h1>LLM-OS validation demos</h1>
+<h1>LLM-OS games (raw demos)</h1>
 <div class="subtitle">
-  Two games running on the same kernel as <a href="https://github.com/EvolvingAgentsLabs/llm_os" style="color:#00aaff">llm_os</a>. Both download a 230 MB local model on first load, then play entirely in the browser via WebAssembly. Used for kernel validation: Tetris exercises a single-loop arcade pattern; Scavenger exercises a multi-step quest with the same compiled-state shape that <code>skillos_robot</code>'s SceneGraph emits.
+  Both demos run on the same kernel as <a href="https://github.com/EvolvingAgentsLabs/llm_os" style="color:#00aaff">llm_os</a>. They download a 230 MB local model on first load, then play entirely in the browser via WebAssembly.
+  <br><br>
+  These URLs are the raw demos with no strategy injection. To pick a strategy, go to the <a href="/" style="color:#00aaff">app launcher</a> and click a strategy card — it appends <code>?strategy=&lt;id&gt;</code> to the URL, the demo fetches the strategy markdown, and prepends it to the system prompt before model load.
 </div>
 
 <a class="demo-card" href="./tetris/">
   <h2>▶ Tetris</h2>
-  <p>A 350M-parameter LLM plays Tetris using grammar-constrained ISA opcodes. Phase-controlled state machine: observe → moves → halt on game over.</p>
-  <div class="meta">cartridge: <code>game/tetris</code> · 4 methods · 5 enumerable move actions</div>
+  <p>A 350M-parameter LLM plays Tetris. The Program layer enumerates every legal placement (4 rotations × 10 columns), simulates the post-placement metrics, scores them with Dellacherie-style weights, and surfaces the top 3 as <code>best_actions</code>. The LLM picks one and emits its opcode sequence.</p>
+  <div class="meta">cartridge: <code>game/tetris</code> · 4 methods · pre-ranked top-3 placements</div>
 </a>
 
 <a class="demo-card" href="./scavenger/">
   <h2>▶ Scavenger</h2>
-  <p>A 350M-parameter LLM solves a multi-step quest. Find the red cube, pick it up, deliver to the blue square — through walls, around pits, with a 30-move budget. The compiled state shape mirrors <code>skillos_robot</code>'s SceneGraph: labeled objects with bearings and distances, ready for direct port to a real-world physical scavenger task.</p>
-  <div class="meta">cartridge: <code>game/scavenger</code> · 4 methods · 7 enumerable opcodes</div>
-</a>
-
-<a class="demo-card" href="./kernel-mode/">
-  <h2>▶ Kernel-mode runner (PR 3 validation)</h2>
-  <p>End-to-end test of the kernel running a generic multi-turn agentic loop — not tied to a specific game. Pick a cartridge (echo, tetris), enter a goal, and watch grammar-enforced ISA opcodes flow turn by turn. Stub tool handlers acknowledge each call; the kernel + sampler do the real work. This is the testbed for the runGoal kernel-mode integration.</p>
-  <div class="meta">module: <code>src/lib/kernel/runner.ts</code> · cartridges: <code>echo</code>, <code>tetris</code></div>
+  <p>A 350M-parameter LLM solves a multi-step quest. Find the red cube, deliver to the blue square — through walls, around pits, with a 30-move budget. The Program layer runs BFS over the grid and surfaces <code>next_step</code>: the first move of the shortest path. The LLM ratifies a single direction.</p>
+  <div class="meta">cartridge: <code>game/scavenger</code> · 4 methods · BFS-pre-computed next move</div>
 </a>
 
 <div class="note">
-  <strong>Validation purpose.</strong> These demos prove the llm_os kernel runs unmodified inside skillos_mini's static-asset bundle, with two different cartridges, on the same model and the same wllama runtime the rest of the app uses. They are <em>not</em> production cartridges — production cartridges live in <code>cartridge-v2/cartridges/</code> and run through the v2 cartridge runner. Once kernel-mode lands in <code>runGoal</code> (skillos_mini PR 3), v2 cartridges will run on this same kernel via the <code>v2_adapter</code>.
-  <br><br>
-  <strong>Headers.</strong> SharedArrayBuffer requires <code>Cross-Origin-Opener-Policy: same-origin</code> + <code>Cross-Origin-Embedder-Policy: require-corp</code>. Vite's dev server includes a small plugin to send these (see <code>vite.config.ts</code>). The Capacitor production build includes them via the server config.
+  <strong>Headers.</strong> SharedArrayBuffer requires <code>Cross-Origin-Opener-Policy: same-origin</code> + <code>Cross-Origin-Embedder-Policy: require-corp</code>. Vite's dev server sets these via a tiny plugin (see <code>vite.config.ts</code>).
 </div>
 </body>
 </html>
