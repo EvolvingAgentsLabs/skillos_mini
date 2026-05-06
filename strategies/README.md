@@ -19,7 +19,7 @@ description: ...          # one-line summary for the launcher card
 
 ## How the launcher loads them
 
-[`mobile/src/components/GamesLauncher.svelte`](../mobile/src/components/GamesLauncher.svelte) reads [`index.json`](index.json) at startup, renders a card per strategy under each game. Clicking a card opens `/demos/<game>/?strategy=<id>` in a new tab.
+[`mobile/src/components/GamesLauncher.svelte`](../mobile/src/components/GamesLauncher.svelte) reads [`index.json`](index.json) at startup, renders a card per strategy under each game. Each card is a plain `<a href>` to `/demos/<game>/index.html?strategy=<id>` — clicking navigates the same tab. Browser back button returns to the launcher.
 
 The bundled demo at `mobile/public/demos/<game>/index.html` reads the URL param, fetches `/strategies/<game>/<id>.md`, parses the body (after the second `---`), and prepends it to `SYSTEM_PROMPT` before the model loads.
 

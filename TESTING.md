@@ -2,8 +2,8 @@
 
 Two surfaces to test:
 
-1. **The launcher** — the Svelte app at `/`. Lists games and strategies; opens demos in new tabs.
-2. **The bundled demos** — at `/demos/<game>/[?strategy=<id>]`. The actual model + kernel.
+1. **The launcher** — the Svelte app at `/`. Lists games and strategies; clicking a card navigates to the demo in the same tab. Browser back button returns to the launcher.
+2. **The bundled demos** — at `/demos/<game>/index.html[?strategy=<id>]`. The actual model + kernel.
 
 ## Test 1 — launcher renders strategies
 
@@ -19,7 +19,7 @@ If the page shows `Failed to load strategies index`, the `predev` step didn't ru
 
 ## Test 2 — Tetris with a strategy
 
-In the launcher, click any Tetris card (e.g. **Well Filler**). A new tab opens at `/demos/tetris/?strategy=well-filler`.
+In the launcher, click any Tetris card (e.g. **Well Filler**). The page navigates to `/demos/tetris/index.html?strategy=well-filler`.
 
 1. Click **Load Model**. ~230 MB download on first run (cached after).
 2. Open DevTools console. Look for `[strategy] loaded "well-filler" — N chars` after model load. Confirms the strategy markdown was fetched and parsed.
@@ -29,7 +29,7 @@ Compare against the no-strategy baseline (open `/demos/tetris/` directly without
 
 ## Test 3 — Scavenger with a strategy
 
-In the launcher, click any Scavenger card. New tab at `/demos/scavenger/?strategy=cautious` (or whichever).
+In the launcher, hit browser back if needed to return from Test 2, then click any Scavenger card. The page navigates to `/demos/scavenger/index.html?strategy=cautious` (or whichever).
 
 1. **Load Model** → cached.
 2. Console shows `[strategy] loaded "cautious" — N chars`.
@@ -37,7 +37,7 @@ In the launcher, click any Scavenger card. New tab at `/demos/scavenger/?strateg
 
 ## Test 4 — strategy parser tolerates missing strategy
 
-Open `/demos/tetris/?strategy=does-not-exist`. Console should show `[strategy] /strategies/tetris/does-not-exist.md → 404`. Demo continues with the default `SYSTEM_PROMPT`. No crash.
+Open `/demos/tetris/index.html?strategy=does-not-exist` directly in the address bar. Console should show `[strategy] /strategies/tetris/does-not-exist.md → 404`. Demo continues with the default `SYSTEM_PROMPT`. No crash.
 
 ## Test 5 — production build
 
