@@ -32,12 +32,10 @@
     }
   });
 
-  function play(gameId: string, strategyId: string | null) {
-    const url = strategyId
-      ? `/demos/${gameId}/?strategy=${strategyId}`
-      : `/demos/${gameId}/`;
-    // Same-tab navigation. Browser back button returns to the launcher.
-    window.location.href = url;
+  function demoUrl(gameId: string, strategyId: string | null): string {
+    return strategyId
+      ? `/demos/${gameId}/index.html?strategy=${strategyId}`
+      : `/demos/${gameId}/index.html`;
   }
 </script>
 
@@ -69,21 +67,19 @@
       <p class="subtitle">{game.subtitle}</p>
 
       <div class="cards">
-        <button class="card default" onclick={() => play(game.id, null)}>
+        <a class="card default" href={demoUrl(game.id, null)}>
           <div class="card-name">No strategy (default prompt)</div>
           <div class="card-desc">
             The demo's built-in SYSTEM_PROMPT only — no strategy markdown
             prepended. Useful as a baseline.
           </div>
-        </button>
+        </a>
         {#each index[game.id] ?? [] as strat}
-          <button
-            class="card"
-            onclick={() => play(game.id, strat.id)}>
+          <a class="card" href={demoUrl(game.id, strat.id)}>
             <div class="card-name">{strat.name}</div>
             <div class="card-desc">{strat.description}</div>
             <div class="card-meta">strategy: <code>{strat.id}</code></div>
-          </button>
+          </a>
         {/each}
       </div>
     </section>
@@ -140,12 +136,14 @@
     gap: 12px;
   }
   .card {
+    display: block;
     background: #111;
     border: 1px solid #333;
     border-radius: 6px;
     padding: 14px;
     text-align: left;
     color: inherit;
+    text-decoration: none;
     cursor: pointer;
     font-family: inherit;
     transition: border-color 0.15s, transform 0.05s;
