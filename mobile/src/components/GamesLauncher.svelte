@@ -36,7 +36,8 @@
     const url = strategyId
       ? `/demos/${gameId}/?strategy=${strategyId}`
       : `/demos/${gameId}/`;
-    window.open(url, "_blank", "noopener");
+    // Same-tab navigation. Browser back button returns to the launcher.
+    window.location.href = url;
   }
 </script>
 
@@ -45,11 +46,11 @@
     <h1>skillos_mini</h1>
     <p class="tag">Games-first browser playground for the LLM-OS kernel.</p>
     <p class="links">
-      <a href="/demos/" target="_blank">→ raw demos (no strategy injection)</a>
+      <a href="/demos/">→ raw demos (no strategy injection)</a>
       ·
       <a
         href="https://github.com/EvolvingAgentsLabs/llm_os"
-        target="_blank">llm_os source</a>
+        target="_blank" rel="noopener">llm_os source</a>
     </p>
   </header>
 
